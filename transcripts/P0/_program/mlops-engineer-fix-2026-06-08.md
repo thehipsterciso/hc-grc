@@ -1,9 +1,9 @@
 # Transcript: mlops-engineer — CI/Reproducibility Remediation
 **Date:** 2026-06-08
 **Stage:** P0
-**Agent:** mlops-engineer (Tier-1 producer)
+**Agent:** mlops-engineer/claude-sonnet-4-6@hc-macbook-pro.local (Tier-1 producer)
 **Task:** Fix CI workflows, Dockerfile, Makefile, branch protection
-**Status:** COMPLETED — 13 files modified. PENDING ADVERSARY REVIEW (ml-engineer-adversary).
+**Status:** COMPLETED — 13 files modified. PENDING ADVERSARY REVIEW (ml-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local).
 
 ---
 

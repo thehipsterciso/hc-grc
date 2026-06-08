@@ -1,7 +1,7 @@
 # Transcript: competitive-analyst — Backstop Audit
 **Date:** 2026-06-08
 **Stage:** P0
-**Agent:** competitive-analyst (Tier-3 cross-discipline backstop)
+**Agent:** competitive-analyst/claude-sonnet-4-6@hc-macbook-pro.local (Tier-3 cross-discipline backstop)
 **Stance:** cross-discipline enforceability audit
 **Scope:** ORCHESTRATOR_PROTOCOL.md v1.0, COORDINATOR_CRON_PROTOCOL.md v1.0, AGENT_SYSTEM.md, data-engineer.md (hardened agent sample)
 **Status:** COMPLETED — 10 findings, 2 critical. Pending ledger registration.

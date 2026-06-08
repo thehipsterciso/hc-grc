@@ -31,22 +31,26 @@ notify the human orchestrator — the program cannot run without its operating r
 
 ## Step 2 — Check for uncertified producer output (process violations)
 
-Query the state of every recent agent run:
+Use filesystem-based detection as the PRIMARY mechanism:
 
-- For each producing agent run recorded in the ledger since the last certified registration, check
-  whether a same-discipline adversary certificate exists in the ledger for that run's output.
-- A producer run with no corresponding certificate entry is a **process violation**.
+1. For each known artifact output path (derivable from stage graph + scope manifests), check:
+   - Does the artifact file exist?
+   - Does a corresponding certificate exist at `ledger/certificates/<cert-id>.json`?
+2. A file with no certificate is a **process violation** regardless of ledger state.
+
+Ledger query is SECONDARY cross-check:
+- For each producing agent run recorded in the ledger since the last certified registration, verify
+  a same-discipline adversary certificate exists in the ledger for that run's output.
 
 For each process violation found:
 1. Log the violation in `error-coordinator`'s ledger as a `process-violation` record with the
    producer agent, run-id, artifact path, and timestamp of the gap.
 2. Dispatch the same-discipline adversary for that artifact immediately.
-3. Do not advance to Step 3 until all such adversaries have been dispatched and their transcripts
-   captured.
 
-After all violations are resolved (certificates exist or adversary runs are in progress):
+After all violations have a dispatched adversary (not necessarily a completed certificate):
 - If any adversary run newly completes during this step, capture its transcript before continuing.
 - Do not proceed to Step 3 while any adversary dispatch from this step is still outstanding.
+- The 3-round/arbiter loop limit applies to these remediation adversaries.
 
 ---
 
@@ -112,8 +116,12 @@ With the diagnostic steps clean:
 1. Read the stage graph from `docs/PROGRAM_ROADMAP.md`.
 2. For each stage in the graph, check:
    - Are all upstream stage dependencies certified and registered?
-   - Is the required tripwire for this stage signed (T1 for P1/S3, T2 for S4, T3 for S5,
-     T4 for X4, T5 for X5)?
+   - Is the required tripwire for this stage signed?
+     * T1 blocks S3 and any stage registering findings (S5–S9, X1–X4).
+     * T2 blocks only the specific framework whose T2 is unsigned; other frameworks can proceed.
+     * T3 blocks S5 (embedding work across all frameworks).
+     * T4 blocks X4 (stance synthesis across all frameworks).
+     * T5 blocks X5 (release across all frameworks).
    - Are there any open rejection loops for this stage's in-progress artifacts?
 3. Identify the set of stages that are ready to begin or continue.
 4. Prioritize:
@@ -121,9 +129,10 @@ With the diagnostic steps clean:
    - Second: advance the critical path (P0 → P1 → S3 → SCF S4 → S5 → ...).
    - Third: advance parallel per-framework stages.
 
-If a tripwire is unsigned and is blocking all ready stages, emit a clear description of which
-tripwire, what it protects, and what the human must do to clear it. Then halt. Do not attempt
-workaround work in a different stage while a program-level tripwire is blocking.
+If a program-level tripwire (T1, T3, T4, T5) is unsigned and is blocking all ready stages, emit
+a clear description of which tripwire, what it protects, and what the human must do to clear it.
+Then halt. Do not attempt workaround work in a different stage while a program-level tripwire is
+blocking. If only a per-framework tripwire T2 is unsigned, proceed with other frameworks.
 
 ---
 
@@ -133,32 +142,42 @@ For each stage unit of work ready to begin, the coordinator dispatches the produ
 together in the same coordinator run. The sequence is:
 
 ```
-1. Construct the dispatch prompt for the producing agent.
+1. Generate the run-id for this dispatch (format: <stage>-<agent-role>-<ISO8601-date>-<seq>).
+   Write the sentinel file at ledger/in-progress/<run-id>.json with status: "producer_dispatched".
+
+2. Construct the dispatch prompt for the producing agent.
+   - Include the agent's full identity (role/model@hc-macbook-pro.local).
    - Include the file scope manifest (Rule 3.1 of ORCHESTRATOR_PROTOCOL.md).
    - Include the Definition of Done requirements the adversary will check.
+   - Inject the run-id into the prompt so the agent includes it in the footer.
    - Include the stage, framework, and run-id.
 
-2. Dispatch the producing agent.
+3. Dispatch the producing agent.
 
-3. Wait for the producer to complete.
+4. Wait for the producer to complete.
 
-4. Immediately run: python scripts/capture-transcript.py (producer's transcript).
+5. Immediately run: python scripts/capture-transcript.py --stage <stage> --framework <framework>
+   --agent <agent-identity> --run-id <run-id> (producer's transcript).
 
-5. Construct the dispatch prompt for the same-discipline adversary.
+6. Update sentinel file: status: "adversary_dispatched".
+
+7. Construct the dispatch prompt for the same-discipline adversary.
+   - Include the adversary's full identity (role/model@hc-macbook-pro.local).
    - Include the artifact path, the producer's run-id, the rotating review stance for this round.
    - Include the adversary's reject checklist for this discipline.
 
-6. Dispatch the adversary.
+8. Dispatch the adversary.
 
-7. Wait for the adversary to complete.
+9. Wait for the adversary to complete.
 
-8. Immediately run: python scripts/capture-transcript.py (adversary's transcript).
+10. Immediately run: python scripts/capture-transcript.py --stage <stage> --framework <framework>
+    --agent <agent-identity> --run-id <run-id> (adversary's transcript).
 
-9. If certificate passes: dispatch context-manager to register, dispatch error-coordinator to
-   record the certificate, then proceed to Step 4 (commit the artifacts).
+11. If certificate passes: dispatch context-manager to register, dispatch error-coordinator to
+    record the certificate, delete sentinel file, then proceed to Step 4 (commit the artifacts).
 
-10. If certificate is a rejection: dispatch error-coordinator to record the rejection, then
-    return to Step 8 step 1 with the producer re-dispatch (revision pass).
+12. If certificate is a rejection: dispatch error-coordinator to record the rejection, then
+    return to Step 8 step 2 with the producer re-dispatch (revision pass).
 ```
 
 A coordinator run that dispatches a producer and does not complete through at least the adversary

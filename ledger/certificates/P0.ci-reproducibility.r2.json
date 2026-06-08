@@ -1,14 +1,15 @@
 {
   "certificate_id": "P0.ci-reproducibility.r2",
+  "host": "hc-macbook-pro.local",
   "artifact_set": "P0 CI/reproducibility remediation round 2",
   "stage_id": "P0",
   "framework": "_program",
   "producer": {
-    "agent": "mlops-engineer",
+    "agent": "mlops-engineer/claude-sonnet-4-6@hc-macbook-pro.local",
     "model": "claude-sonnet-4-6"
   },
   "adversary": {
-    "agent": "ml-engineer-adversary",
+    "agent": "ml-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local",
     "model": "claude-opus-4-8",
     "family": "anthropic",
     "stance": "falsification-probe"

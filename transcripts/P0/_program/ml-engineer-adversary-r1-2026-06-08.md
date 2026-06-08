@@ -1,8 +1,7 @@
 # Transcript: ml-engineer-adversary — Round 1 Audit
 **Date:** 2026-06-08
 **Stage:** P0
-**Agent:** ml-engineer-adversary (Tier-2 same-discipline adversary)
-**Model:** claude-opus-4-8
+**Agent:** ml-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local (Tier-2 same-discipline adversary)
 **Stance:** falsification-probe
 **Artifact set:** P0 CI/reproducibility remediation
 **Verdict:** REJECT

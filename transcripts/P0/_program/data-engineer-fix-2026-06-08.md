@@ -1,9 +1,9 @@
 # Transcript: data-engineer — Schema/Gate/Scripts Remediation
 **Date:** 2026-06-08
 **Stage:** P0
-**Agent:** data-engineer (Tier-1 producer)
+**Agent:** data-engineer/claude-sonnet-4-6@hc-macbook-pro.local (Tier-1 producer)
 **Task:** Fix artifact schema, defect schema, stage_gate.py, capture-transcript scripts, hooks
-**Status:** COMPLETED — 12 files modified. PENDING ADVERSARY REVIEW (data-engineer-adversary).
+**Status:** COMPLETED — 12 files modified. PENDING ADVERSARY REVIEW (data-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local).
 
 ---
 

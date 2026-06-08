@@ -1,0 +1,45 @@
+{
+  "certificate_id": "P0.protocol-fixes-identity-backfill.r2",
+  "host": "hc-macbook-pro.local",
+  "artifact_set": "Protocol fixes (#22-#31) + agent identity backfill",
+  "stage_id": "P0",
+  "framework": "_program",
+  "producer": {
+    "agent": "documentation-engineer/claude-sonnet-4-6@hc-macbook-pro.local",
+    "model": "claude-sonnet-4-6"
+  },
+  "adversary": {
+    "agent": "documentation-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local",
+    "model": "claude-opus-4-8",
+    "family": "anthropic",
+    "stance": "premortem"
+  },
+  "verdict": "PASS",
+  "rounds": 2,
+  "date": "2026-06-08",
+  "files_certified": [
+    "docs/ORCHESTRATOR_PROTOCOL.md",
+    "docs/COORDINATOR_CRON_PROTOCOL.md",
+    "transcripts/P0/_program/data-engineer-fix-2026-06-08.md",
+    "transcripts/P0/_program/mlops-engineer-fix-2026-06-08.md",
+    "transcripts/P0/_program/orchestrator-failures-2026-06-08.md",
+    "transcripts/P0/_program/competitive-analyst-backstop-2026-06-08.md",
+    "transcripts/P0/_program/data-engineer-adversary-r1-2026-06-08.md",
+    "transcripts/P0/_program/data-engineer-adversary-r2-2026-06-08.md",
+    "transcripts/P0/_program/ml-engineer-adversary-r1-2026-06-08.md",
+    "transcripts/P0/_program/ml-engineer-adversary-r2-2026-06-08.md",
+    "ledger/certificates/P0.schema-gate-scripts.r2.json",
+    "ledger/certificates/P0.ci-reproducibility.r2.json"
+  ],
+  "transcript_refs": [
+    "transcripts/P0/_program/documentation-engineer-adversary-r1-2026-06-08.md",
+    "transcripts/P0/_program/documentation-engineer-adversary-r2-2026-06-08.md"
+  ],
+  "round_1_rejection_summary": "Rule 7 git-diff list omitted docs/PREREGISTRATION.md (blocking); Rule 7 referenced docs/CLAUDE.md which does not exist — should be root CLAUDE.md (blocking)",
+  "issues_addressed": ["#22","#23","#24","#25","#26","#27","#28","#29","#30","#31"],
+  "residual_limitations": [
+    "Rule 7 governance file list is hand-maintained — future governance files must be appended manually",
+    "docs/COORDINATOR_CRON_PROTOCOL.md was modified but outside the two round-2 re-audited defects; covered by round-1 review",
+    "Layer-3: different tier, same Anthropic family"
+  ]
+}

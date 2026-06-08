@@ -28,6 +28,25 @@ Do not dispatch any agent, write any file, or run any command until the pre-flig
 
 ---
 
+## Agent Identity Format
+
+Every agent identity must use the full format: `role/model@hostname`
+
+Examples:
+- `data-engineer/claude-sonnet-4-6@hc-macbook-pro.local`
+- `data-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local`
+- `mlops-engineer/claude-sonnet-4-6@hc-macbook-pro.local`
+- `ml-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local`
+- `git-workflow-manager/claude-sonnet-4-6@hc-macbook-pro.local`
+- `multi-agent-coordinator/claude-sonnet-4-6@hc-macbook-pro.local`
+
+**Rule:** Adversary agents always run `claude-opus-4-8`. Producing agents always run `claude-sonnet-4-6`.
+Hostname is always: `hc-macbook-pro.local`
+
+Every dispatch prompt must include the agent's full identity string in this format.
+
+---
+
 ## Rule 1 — The Atomic Loop Is Non-Negotiable
 
 The only accepted unit of work is:
@@ -43,7 +62,13 @@ After a producer agent completes, the coordinator's next action is exclusively:
 1. Capture the producer's transcript (see Rule 2).
 2. Dispatch the paired same-discipline adversary.
 
-No exceptions. The coordinator does not:
+**Best effort:** The coordinator attempts to dispatch the adversary in the same session as producer
+completion. If the session cannot continue for any reason, the COORDINATOR_CRON_PROTOCOL.md Step 2
+pre-flight check is the enforcement mechanism. A sentinel file is written at producer dispatch time
+(not completion) to enable Step 2 detection even if the coordinator is killed mid-run. See Rule 2.4
+for sentinel file format and lifecycle.
+
+No exceptions to transcript capture. The coordinator does not:
 - Summarize or evaluate the producer's output.
 - Write any file based on the producer's output.
 - Advance the stage graph.
@@ -73,8 +98,13 @@ When an adversary rejects an artifact:
 4. Repeat until a passing certificate is issued or the deadlock limit (default: 3 rounds) is reached.
 
 At 3 rounds without resolution:
-- Dispatch the arbiter (a third instance, different model, fresh context).
+- Dispatch the arbiter agent (defined in `agents/adversarial-review/arbiter.md`). The arbiter is a third instance running `claude-opus-4-8` with a fresh context (no prior conversation). Its role is to evaluate the two conflicting positions (producer and adversary), select or synthesize a resolution, and issue a binding `PASS` or `REJECT` verdict. The arbiter's decision is final; if it issues `REJECT`, the artifact returns to the producer for a new approach (not a continuation of the prior deadlock).
 - If the arbiter cannot resolve: halt and raise a human tripwire.
+
+**P0 deliverable note:** The arbiter agent must be defined before the first production stage run
+reaches round 3. Create `agents/adversarial-review/arbiter.md` with full agent system prompt, goals,
+rejection criteria, and any special handling for deadlock scenarios. A template is available at
+`agents/adversarial-review/_TEMPLATE.md`.
 
 ### 1.5 — Conditional approvals are not accepted
 
@@ -95,9 +125,11 @@ Immediately after any agent completes — before any other action — the coordi
 python scripts/capture-transcript.py \
   --stage <stage-id> \
   --framework <framework-name-or-program> \
-  --agent <agent-type> \
+  --agent <agent-identity> \
   --run-id <run-id>
 ```
+
+where `<agent-identity>` is the full identity string (format: `role/model@hc-macbook-pro.local`).
 
 "Immediately" means the coordinator's next tool call after observing the agent's completion is this
 script. Not after reviewing the output. Not after deciding what to do next. The transcript is
@@ -108,16 +140,60 @@ captured first.
 Transcripts are written to:
 
 ```
-frameworks/<framework>/transcripts/<stage>/<agent-type>-<run-id>.json
+frameworks/<framework>/transcripts/<stage>/<agent-identity>-<run-id>.md
 ```
 
 For program-level (non-framework) stages:
 
 ```
-transcripts/<stage>/<agent-type>-<run-id>.json
+transcripts/<stage>/<agent-identity>-<run-id>.md
 ```
 
-### 2.3 — No registry entry without a transcript reference
+where `<agent-identity>` uses the full format `role/model@hostname` with slashes and `@` as shown.
+
+### 2.3 — Mandatory footer format
+
+Every agent must emit a footer at the end of its artifact delivery. The footer must be formatted as a fenced YAML block with the following structure:
+
+```yaml
+---
+artifact_status: PENDING_ADVERSARY_REVIEW
+agent: role/model@hc-macbook-pro.local
+artifact: <brief description of what was delivered>
+files_written:
+  - path/to/file1
+  - path/to/file2
+definition_of_done:
+  completeness: <statement on what is complete>
+  quality: <statement on quality assurance performed>
+  provenance: transcript captured at path/to/transcript.md
+  adversary_ready: <description of what adversary should verify>
+transcript_capture: python scripts/capture-transcript.py --stage <stage> --framework <framework> --agent <agent-identity> --run-id <run-id>
+```
+
+The `run-id` is assigned by the coordinator at dispatch time with format: `<stage>-<agent-role>-<ISO8601-date>-<seq>`.
+The run-id is injected into the dispatch prompt before the agent is spawned. The agent fills it in the footer.
+The orchestrator resolves the `<run-id>` placeholder to the actual value before running the capture script.
+
+### 2.4 — Sentinel file for in-progress tracking
+
+At the moment of producer dispatch, write a sentinel file at `ledger/in-progress/<run-id>.json` with:
+
+```json
+{
+  "stage": "<stage-id>",
+  "framework": "<framework>",
+  "agent": "role/model@hostname",
+  "dispatched_at": "<ISO8601-timestamp>",
+  "status": "producer_dispatched"
+}
+```
+
+Update `status` to `"adversary_dispatched"` when the adversary is dispatched. Delete the file when
+the final certificate is written. This enables Step 2 of the COORDINATOR_CRON_PROTOCOL.md to detect
+in-progress work even if the coordinator is killed mid-run.
+
+### 2.5 — No registry entry without a transcript reference
 
 `context-manager` may not register an artifact that lacks a `transcript_ref` field pointing to an
 existing file at the path described in 2.2. If the file does not exist, the coordinator re-runs the
@@ -125,7 +201,7 @@ capture script before proceeding. If the capture script fails, the coordinator l
 the `error-coordinator` ledger and halts until it is resolved — it does not create a stub or
 placeholder.
 
-### 2.4 — Transcript capture failures are blocking
+### 2.6 — Transcript capture failures are blocking
 
 A transcript capture failure is not a soft error. The coordinator does not advance, summarize, or
 register anything until the transcript for the current agent run exists on disk and its path is
@@ -190,6 +266,13 @@ file and describes the specific change authorized:
 Any agent modification to these files without explicit authorization in the dispatch prompt is a
 scope violation subject to Rule 3.2. Authorization must be specific: "add section X to
 PROGRAM_ROADMAP.md" is valid; "update docs as needed" is not.
+
+**Scope violation check is independent of ledger state:** The pre-flight checklist (Rule 7) compares
+every governance document against its last-committed state using `git diff HEAD`. This check is
+orthogonal to whether a defect record exists in the ledger. Any uncommitted modification to a
+governance document that lacks a dispatch authorization record is a violation. Exception pathway: if
+an unauthorized modification is substantively correct, it requires a human review and a ledger entry
+ratifying the exception before the modification is committed.
 
 ---
 
@@ -297,11 +380,26 @@ signed, it halts.
 Run on every coordinator invocation, before dispatching any agent or taking any action.
 
 ```
-[ ] T1 signed?  (required before any S3/S4+ work)
-[ ] T2 signed for this framework?  (required before S4 ingestion)
+[ ] T1 signed?  (required before S3 and any stage that registers findings: S5–S9, X1–X4)
+[ ] T2 signed for this framework?  (required before S4 ingestion for that framework only)
 [ ] T3 signed?  (required before S5 embedding work)
 [ ] T4 signed?  (required before X4 stance synthesis)
 [ ] T5 signed?  (required before X5 release)
+
+[ ] Tripwire scope check:
+    → Per-framework tripwire T2 blocks only the framework whose T2 is unsigned.
+    → Program-level tripwires T1, T3, T4, T5 block all frameworks.
+
+[ ] Scope violation pre-flight:
+    → Compare every governance document against its last-committed state using `git diff HEAD`:
+       - CLAUDE.md
+       - docs/PROGRAM_ROADMAP.md
+       - docs/AGENT_SYSTEM.md
+       - docs/PREREGISTRATION.md
+       - agents/README.md
+    → Any uncommitted modification without a dispatch authorization record in the ledger is a violation.
+    → If a modification is substantively correct but unauthorized, escalate to human review and require
+      a ratifying ledger entry before commit.
 
 [ ] Any producer output present without a corresponding adversary certificate?
     → If yes: dispatch adversary before anything else.
@@ -344,6 +442,34 @@ coordinator dispatches `error-coordinator` to record:
 
 No event may be back-filled. Ledger entries are written at the time the event occurs, not
 reconstructed afterward. A reconstructed ledger entry is not valid provenance.
+
+---
+
+## Rule 9 — Agent Status Reporting
+
+The coordinator never reports an agent as "still running" beyond one turn after dispatch. If no
+completion notification has arrived one turn after dispatch, the coordinator:
+
+1. Logs `status: unresolved` in the ledger sentinel file (see Rule 2.4) for that run-id.
+2. Re-dispatches the agent in the next cron run.
+3. Does not assert unverifiable state.
+
+An agent that is silent for two consecutive cron runs is escalated to the human orchestrator with a
+specific problem statement: which agent, which run-id, when it was dispatched, and what was expected.
+
+---
+
+## Certificate Verdict Format
+
+All adversary certificates must include a structured `verdict` field with an enumerated value of
+exactly `PASS` or `REJECT`. No other values are valid. The coordinator reads only this field for
+routing decisions.
+
+Any certificate missing the `verdict` field is treated as `REJECT`.
+
+Free-text explanation and rationale follow the structured verdict field but do not override it.
+A certificate with `verdict: PASS` and extensive caveats in the explanation is still a passing
+certificate and advances the artifact.
 
 ---
 

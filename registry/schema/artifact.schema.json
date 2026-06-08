@@ -152,9 +152,8 @@
       "additionalProperties": false,
       "properties": {
         "agent": {
-          "type": "string",
-          "description": "Agent discipline identifier (e.g. context-manager, data-scientist, nlp-engineer).",
-          "minLength": 1
+          "$ref": "#/definitions/agent_identity",
+          "description": "Agent identity in format role/model@hostname (e.g. data-engineer/claude-sonnet-4-6@hc-macbook-pro.local)."
         },
         "model": {
           "type": "string",
@@ -174,9 +173,8 @@
           "additionalProperties": false,
           "properties": {
             "agent": {
-              "type": "string",
-              "description": "Adversary agent discipline identifier (e.g. data-scientist-adversary).",
-              "minLength": 1
+              "$ref": "#/definitions/agent_identity",
+              "description": "Adversary agent identity in format role/model@hostname (e.g. data-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local)."
             },
             "model": {
               "type": "string",
@@ -393,6 +391,11 @@
   "definitions": {
     "_p0_adversary_constraint": {
       "$comment": "When stage_id is NOT P0, the adversary.self_attested form is not permitted. This is enforced by the allOf[1] if/then block above (schema-level, draft-07). stage_gate.py --validate-artifact triggers jsonschema.validate() which evaluates this constraint."
+    },
+    "agent_identity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*/claude-[a-z0-9.-]+@[a-z0-9.-]+\\.local$",
+      "description": "Agent identity in format role/model@hostname"
     }
   }
 }

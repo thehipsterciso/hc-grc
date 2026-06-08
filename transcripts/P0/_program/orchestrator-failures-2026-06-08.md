@@ -1,7 +1,7 @@
 # Orchestrator Failure Record — P0
 **Date:** 2026-06-08
 **Stage:** P0
-**Author:** Orchestrator (coordinator role)
+**Author:** multi-agent-coordinator/claude-sonnet-4-6@hc-macbook-pro.local (coordinator role)
 **Status:** Permanent record — do not delete or amend
 
 This document records every process violation committed by the orchestrator during P0 execution.

@@ -1,14 +1,15 @@
 {
   "certificate_id": "P0.schema-gate-scripts.r2",
+  "host": "hc-macbook-pro.local",
   "artifact_set": "P0 schema/gate/scripts remediation round 2",
   "stage_id": "P0",
   "framework": "_program",
   "producer": {
-    "agent": "data-engineer",
+    "agent": "data-engineer/claude-sonnet-4-6@hc-macbook-pro.local",
     "model": "claude-sonnet-4-6"
   },
   "adversary": {
-    "agent": "data-engineer-adversary",
+    "agent": "data-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local",
     "model": "claude-opus-4-8",
     "family": "anthropic",
     "stance": "assumption-ledger"

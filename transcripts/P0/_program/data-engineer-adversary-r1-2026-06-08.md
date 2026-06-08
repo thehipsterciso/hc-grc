@@ -1,8 +1,7 @@
 # Transcript: data-engineer-adversary — Round 1 Audit
 **Date:** 2026-06-08
 **Stage:** P0
-**Agent:** data-engineer-adversary (Tier-2 same-discipline adversary)
-**Model:** claude-opus-4-8
+**Agent:** data-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local (Tier-2 same-discipline adversary)
 **Stance:** assumption-ledger
 **Artifact set:** P0 schema/gate/scripts remediation
 **Verdict:** REJECT

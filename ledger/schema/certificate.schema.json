@@ -1,6 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hc-grc/ledger/schema/certificate.schema.json",
+  "$defs": {
+    "agent_identity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*/claude-[a-z0-9.-]+@[a-z0-9.-]+\\.local$",
+      "description": "Agent identity in format role/model@hostname"
+    }
+  },
   "title": "Ledger Certificate",
   "description": "Schema for a hc-grc acceptance/rejection certificate issued by a Tier-2 adversary (or self-attested by Tier-0 for adversary-less stages). The stem of the certificate filename is the certificate_id; artifact.certificate_ref must equal that stem. stage_gate.py loads this file via ledger/certificates/<certificate_ref>.json and requires verdict == ACCEPT.",
   "type": "object",
@@ -58,9 +65,8 @@
       "additionalProperties": false,
       "properties": {
         "agent": {
-          "type": "string",
-          "description": "Producer agent discipline identifier.",
-          "minLength": 1
+          "$ref": "#/$defs/agent_identity",
+          "description": "Producer agent identity in format role/model@hostname."
         },
         "model": {
           "type": "string",
@@ -80,9 +86,8 @@
           "additionalProperties": false,
           "properties": {
             "agent": {
-              "type": "string",
-              "description": "Adversary agent discipline identifier (e.g. data-scientist-adversary).",
-              "minLength": 1
+              "$ref": "#/$defs/agent_identity",
+              "description": "Adversary agent identity in format role/model@hostname (e.g. data-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local)."
             },
             "model": {
               "type": "string",
@@ -114,9 +119,8 @@
               "const": true
             },
             "attesting_agent": {
-              "type": "string",
-              "description": "The Tier-0 agent performing the attestation (e.g. multi-agent-coordinator, context-manager).",
-              "minLength": 1
+              "$ref": "#/$defs/agent_identity",
+              "description": "The Tier-0 agent performing the attestation, in format role/model@hostname."
             }
           }
         }

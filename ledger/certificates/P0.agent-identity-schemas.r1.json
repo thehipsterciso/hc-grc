@@ -1,0 +1,33 @@
+{
+  "certificate_id": "P0.agent-identity-schemas.r1",
+  "host": "hc-macbook-pro.local",
+  "artifact_set": "Agent identity format — schema enforcement",
+  "stage_id": "P0",
+  "framework": "_program",
+  "producer": {
+    "agent": "data-engineer/claude-sonnet-4-6@hc-macbook-pro.local",
+    "model": "claude-sonnet-4-6"
+  },
+  "adversary": {
+    "agent": "data-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local",
+    "model": "claude-opus-4-8",
+    "family": "anthropic",
+    "stance": "independent-reconstruction"
+  },
+  "verdict": "PASS",
+  "rounds": 1,
+  "date": "2026-06-08",
+  "files_certified": [
+    "registry/schema/artifact.schema.json",
+    "ledger/schema/certificate.schema.json",
+    "ledger/schema/defect.schema.json"
+  ],
+  "transcript_refs": [
+    "transcripts/P0/_program/data-engineer-adversary-identity-r1-2026-06-08.md"
+  ],
+  "summary": "Added definitions/agent_identity with pattern ^[a-z][a-z0-9-]*/claude-[a-z0-9.-]+@[a-z0-9.-]+\\.local$ to all three schemas. 6 total placements: artifact (2), certificate (3), defect (1). All $ref targets resolve. P0 self-attestation branches intact.",
+  "residual_limitations": [
+    "Pattern enforces identity FORMAT only — not that asserted role/model corresponds to the actual executing agent",
+    "Layer-3: different tier, same Anthropic family"
+  ]
+}
