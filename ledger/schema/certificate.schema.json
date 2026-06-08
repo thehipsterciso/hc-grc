@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hc-grc/ledger/schema/certificate.schema.json",
+  "title": "Ledger Certificate",
+  "description": "Schema for a hc-grc acceptance/rejection certificate issued by a Tier-2 adversary (or self-attested by Tier-0 for adversary-less stages). The stem of the certificate filename is the certificate_id; artifact.certificate_ref must equal that stem. stage_gate.py loads this file via ledger/certificates/<certificate_ref>.json and requires verdict == ACCEPT.",
+  "type": "object",
+  "required": [
+    "certificate_id",
+    "artifact_id",
+    "stage_id",
+    "producer",
+    "adversary_block",
+    "verdict",
+    "completeness_verdict",
+    "quality_verdict",
+    "residual_limitations",
+    "model_independence_note",
+    "git_commit",
+    "timestamp"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "certificate_id": {
+      "type": "string",
+      "description": "Unique certificate identifier. Must equal the filename stem of this file under ledger/certificates/. This is the value artifact.certificate_ref points to.",
+      "minLength": 1
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "The artifact_id of the artifact this certificate covers. Must match the artifact_id field in the corresponding registry entry.",
+      "minLength": 1
+    },
+    "stage_id": {
+      "type": "string",
+      "description": "Stage the certified artifact belongs to.",
+      "enum": [
+        "P0",
+        "P1",
+        "S1f",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "S8f",
+        "S9",
+        "X1",
+        "X2",
+        "X3",
+        "X4",
+        "X5"
+      ]
+    },
+    "producer": {
+      "type": "object",
+      "description": "The agent and model that produced the artifact being certified.",
+      "required": ["agent", "model"],
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string",
+          "description": "Producer agent discipline identifier.",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "description": "Model used by the producer.",
+          "minLength": 1
+        }
+      }
+    },
+    "adversary_block": {
+      "description": "Either a normal adversary review block (for stages with required_adversary_disciplines non-empty) or a self-attestation block (for P0 and any future stages with required_adversary_disciplines: []). Exactly one of these two forms must be present.",
+      "oneOf": [
+        {
+          "type": "object",
+          "title": "Normal adversary review",
+          "description": "Used for all stages with at least one required adversary discipline (P1, S1f, S3, S4-S9, X1-X5). The adversary is a same-discipline Tier-2 agent running a different model from the producer.",
+          "required": ["agent", "model", "stance", "rounds"],
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string",
+              "description": "Adversary agent discipline identifier (e.g. data-scientist-adversary).",
+              "minLength": 1
+            },
+            "model": {
+              "type": "string",
+              "description": "Model used by the adversary. Should differ from the producer's model for Layer-3 weight independence. If identical, a limitation must be noted in residual_limitations.",
+              "minLength": 1
+            },
+            "stance": {
+              "type": "string",
+              "description": "Rotating review stance applied (e.g. falsification-probe, competing-hypotheses, completeness-audit, red-team, premortem). Must differ from the stance used on any prior revision of this artifact.",
+              "minLength": 1
+            },
+            "rounds": {
+              "type": "integer",
+              "description": "Number of review rounds completed (including revisions). 1 means ACCEPT on first submission.",
+              "minimum": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "title": "Self-attestation (adversary-less stage)",
+          "description": "Used for P0 (required_adversary_disciplines: []) and any future orchestration-only stages. The coordinator or Tier-0 agent attests that the artifact meets the stage's DoD. No same-discipline adversary review is performed; this is by gate design, not an exception. Must carry self_attested: true.",
+          "required": ["self_attested", "attesting_agent"],
+          "additionalProperties": false,
+          "properties": {
+            "self_attested": {
+              "type": "boolean",
+              "description": "Must be true. Signals this certificate bypasses same-discipline adversary review per gate design.",
+              "const": true
+            },
+            "attesting_agent": {
+              "type": "string",
+              "description": "The Tier-0 agent performing the attestation (e.g. multi-agent-coordinator, context-manager).",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "verdict": {
+      "type": "string",
+      "description": "Final verdict. stage_gate.py requires ACCEPT for the stage to pass. REJECT certificates should be stored in ledger/defects/ instead of ledger/certificates/ — a certificate in ledger/certificates/ with verdict REJECT will cause the stage gate to fail.",
+      "enum": ["ACCEPT", "REJECT"]
+    },
+    "completeness_verdict": {
+      "type": "string",
+      "description": "Adversary's assessment of whether the artifact covers all required elements of its Definition of Done.",
+      "enum": ["COMPLETE", "INCOMPLETE", "PARTIAL"]
+    },
+    "quality_verdict": {
+      "type": "string",
+      "description": "Adversary's assessment of whether the artifact meets the quality bar for the stage (correctness, rigor, reproducibility as applicable).",
+      "enum": ["ACCEPTABLE", "UNACCEPTABLE", "CONDITIONAL"]
+    },
+    "residual_limitations": {
+      "type": "array",
+      "description": "Acknowledged limitations that survive acceptance. Required per AGENT_SYSTEM.md atomic operation. For finding artifacts, must include the model independence note (Anthropic sonnet/opus tier-level diversity). Empty array is valid only for orchestration artifacts with no material limitations.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "model_independence_note": {
+      "type": "string",
+      "description": "Explicit statement of model independence status per AGENT_SYSTEM.md section 'Model independence: honest accounting'. For standard adversary reviews: state that tier-level diversity only is provided (Anthropic sonnet/opus). For self-attestation: state 'orchestration artifact; no same-discipline adversary per P0 gate design'.",
+      "minLength": 1
+    },
+    "git_commit": {
+      "type": "string",
+      "description": "Full SHA-1 git commit hash of the artifact at certification time. Must match artifact.git_commit.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp when this certificate was issued.",
+      "format": "date-time"
+    },
+    "defect_refs": {
+      "type": "array",
+      "description": "References to defect records (stems under ledger/defects/) issued during prior rejection rounds for this artifact. Empty for first-round accepts.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional free-text notes from the adversary or attesting agent."
+    }
+  }
+}

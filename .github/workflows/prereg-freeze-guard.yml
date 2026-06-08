@@ -1,0 +1,65 @@
+name: prereg-freeze-guard
+
+on:
+  pull_request:
+    paths:
+      - "docs/PREREGISTRATION.md"
+  # Also guard direct pushes — a push to any branch can modify PREREGISTRATION.md.
+  # The content-hash check catches tampering even without a PR.
+  push:
+    paths:
+      - "docs/PREREGISTRATION.md"
+
+jobs:
+  freeze-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if pre-registration is frozen and verify content hash
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          HASH_FILE="docs/PREREGISTRATION.md.sha256"
+
+          if [ ! -f "$HASH_FILE" ]; then
+            echo "No freeze hash found — pre-registration not yet frozen at T1. Change permitted."
+            exit 0
+          fi
+
+          # Hash file exists: T1 has been signed. Recompute and compare content.
+          FROZEN_HASH=$(awk '{print $1}' "$HASH_FILE")
+          CURRENT_HASH=$(sha256sum docs/PREREGISTRATION.md | awk '{print $1}')
+
+          echo "Frozen hash:  $FROZEN_HASH"
+          echo "Current hash: $CURRENT_HASH"
+
+          if [ "$FROZEN_HASH" != "$CURRENT_HASH" ]; then
+            # Check for override label (PR context only)
+            if [ "$EVENT_NAME" = "pull_request" ] && echo "$PR_LABELS" | grep -q "tripwire-override"; then
+              echo "Label 'tripwire-override' present — human override acknowledged. Proceeding."
+              exit 0
+            fi
+
+            echo ""
+            echo "ERROR: PREREGISTRATION.md content does not match frozen hash. This document is immutable after T1."
+            echo ""
+            echo "Frozen hash:  $FROZEN_HASH"
+            echo "Current hash: $CURRENT_HASH"
+            echo ""
+            echo "The file docs/PREREGISTRATION.md.sha256 was set at human tripwire T1."
+            echo "Post-hoc changes to the pre-registration violate the no-post-hoc-thresholds"
+            echo "constraint and corrupt the entire program's epistemic integrity."
+            echo ""
+            echo "To override (requires explicit human decision):"
+            echo "  1. Add the label 'tripwire-override' to this PR."
+            echo "  2. Re-run this check."
+            echo "  3. After merging, update docs/PREREGISTRATION.md.sha256 to the new hash."
+            echo ""
+            echo "The override label must be added by a human with write access to the repo."
+            echo "Do not automate around this gate."
+            exit 1
+          fi
+
+          echo "Pre-registration content matches frozen hash — no tampering detected."

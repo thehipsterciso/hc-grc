@@ -1,0 +1,21 @@
+# Data & artifacts — not committed; the registry records what was produced and how to reproduce it
+data/
+**/data/
+*.parquet
+*.feather
+embeddings/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.key
+*.token
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

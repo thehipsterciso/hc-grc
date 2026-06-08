@@ -1,0 +1,43 @@
+{
+  "certificate_id": "P0.schema-gate-scripts.r2",
+  "artifact_set": "P0 schema/gate/scripts remediation round 2",
+  "stage_id": "P0",
+  "framework": "_program",
+  "producer": {
+    "agent": "data-engineer",
+    "model": "claude-sonnet-4-6"
+  },
+  "adversary": {
+    "agent": "data-engineer-adversary",
+    "model": "claude-opus-4-8",
+    "family": "anthropic",
+    "stance": "assumption-ledger"
+  },
+  "verdict": "PASS",
+  "rounds": 2,
+  "date": "2026-06-08",
+  "files_certified": [
+    "registry/schema/artifact.schema.json",
+    "ledger/schema/defect.schema.json",
+    "docs/REGISTRY.md",
+    "docs/LEDGER.md",
+    "scripts/stage_gate.py",
+    "tests/test_stage_gate.py",
+    "requirements-dev.txt",
+    "scripts/capture-transcript.sh",
+    "scripts/capture-transcript.py",
+    "scripts/hooks/commit-msg",
+    "scripts/sync-agents.sh"
+  ],
+  "transcript_refs": [
+    "transcripts/P0/_program/data-engineer-fix-2026-06-08.md",
+    "transcripts/P0/_program/data-engineer-adversary-r1-2026-06-08.md",
+    "transcripts/P0/_program/data-engineer-adversary-r2-2026-06-08.md"
+  ],
+  "round_1_rejection_summary": "capture-transcript.py missing import re (critical); both transcript scripts not executable (high); REGISTRY.md claimed P1+ self_attested fails schema validation — it did not; stage_gate.py did not enforce coupling (high)",
+  "residual_limitations": [
+    "Producer and adversary share Anthropic family — Layer-3 weight independence is tier-level only",
+    "jsonschema not installed in project venv at audit time — gate requires installation",
+    "STAGE_GATES.yaml / stage_gate.py / artifact.schema.json enum sync not audited in this pass"
+  ]
+}

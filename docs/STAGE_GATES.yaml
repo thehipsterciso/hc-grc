@@ -1,0 +1,398 @@
+# hc-grc — Stage Gates Definition
+#
+# Machine-readable gate specification. For each stage, define:
+# - stage_id: P0, P1, S3, S1f, S4, S5, S6, S7, S8f, S9, X1, X2, X3, X4, X5
+# - applies_to: "program" (once) | "per-framework" (×5 in parallel) | "synthesis" (Tier B)
+# - required_artifacts: list of artifact types that must be registered + certified
+# - required_adversary_disciplines: list of adversary agents that must sign
+# - tripwire: null | {id: T1–T5, description: string}
+# - depends_on_stages: list of prior stages that must complete first
+# - tier_b_min_frameworks: (X1 only) minimum certified frameworks at S9 required to open X1
+#
+# Based on PROGRAM_ROADMAP.md and AGENT_SYSTEM.md "Which agents run where" table.
+
+stages:
+  P0:
+    stage_id: P0
+    applies_to: program
+    description: "Program setup & autonomy harness"
+    required_artifacts:
+      - orchestration-harness
+      - test-automation-suite
+      - agent-roster
+    required_adversary_disciplines: []  # P0 is orchestration only; no artifact adversary review
+    tripwire: null
+    depends_on_stages: []
+    producer_disciplines:
+      - agent-organizer
+      - multi-agent-coordinator
+      - context-manager
+      - error-coordinator
+      - mlops-engineer
+      - git-workflow-manager
+    tier_b_min_frameworks: null
+
+  P1:
+    stage_id: P1
+    applies_to: program
+    description: "Pre-registration (frozen register of questions, methods, decision rules)"
+    required_artifacts:
+      - preregistration-document
+      - research-questions
+      - analysis-plans
+      - decision-rules
+    required_adversary_disciplines:
+      - data-scientist-adversary
+    tripwire:
+      id: T1
+      description: "Freeze the pre-registration; hash docs/PREREGISTRATION.md"
+    depends_on_stages:
+      - P0
+    producer_disciplines:
+      - research-analyst
+      - first-principles-thinking
+      - data-scientist
+    tier_b_min_frameworks: null
+
+  S3:
+    stage_id: S3
+    applies_to: program
+    description: "Method validation on ground truth (shared, once)"
+    required_artifacts:
+      - synthetic-corpus
+      - method-validation-results
+      - validated-methods-registry
+    required_adversary_disciplines:
+      - data-scientist-adversary
+    tripwire: null
+    depends_on_stages:
+      - P1
+    producer_disciplines:
+      - data-scientist
+      - ml-engineer
+    tier_b_min_frameworks: null
+
+  S1f:
+    stage_id: S1f
+    applies_to: per-framework
+    description: "Framework question instantiation (bind frozen questions to this framework)"
+    required_artifacts:
+      - framework-instantiation
+      - control-taxonomy
+      - question-bindings
+    required_adversary_disciplines:
+      - data-scientist-adversary
+    tripwire: null
+    depends_on_stages:
+      - P1
+    producer_disciplines:
+      - data-scientist
+      - research-analyst
+    tier_b_min_frameworks: null
+
+  S4:
+    stage_id: S4
+    applies_to: per-framework
+    description: "Corpus construction & provenance (ingest controls, build crosswalk for SCF)"
+    required_artifacts:
+      - control-assets
+      - corpus-metadata
+      - lineage-record
+      - control-taxonomy
+      - crosswalk  # SCF only; null for other frameworks
+    required_adversary_disciplines:
+      - data-engineer-adversary
+    tripwire:
+      id: T2
+      description: "Confirm each framework's licensing before ingesting"
+    depends_on_stages:
+      - S1f
+      - S3
+    producer_disciplines:
+      - data-engineer
+      - legal-advisor
+      - license-engineer
+    tier_b_min_frameworks: null
+
+  S5:
+    stage_id: S5
+    applies_to: per-framework
+    description: "Measurement instrument: embedding ensemble"
+    required_artifacts:
+      - enriched-control-text
+      - embedding-model-1
+      - embedding-model-2
+      - embedding-model-3
+      - embedding-selection-criterion
+    required_adversary_disciplines:
+      - nlp-engineer-adversary
+      - ml-engineer-adversary
+      - llm-architect-adversary
+    tripwire:
+      id: T3
+      description: "Freeze the embedding-selection criterion (shared, orthogonal to all questions)"
+    depends_on_stages:
+      - S4
+    producer_disciplines:
+      - nlp-engineer
+      - ml-engineer
+      - llm-architect
+    tier_b_min_frameworks: null
+
+  S6:
+    stage_id: S6
+    applies_to: per-framework
+    description: "Instrument construct validity (measure governance semantics, not surface text)"
+    required_artifacts:
+      - construct-validity-report
+      - cross-model-cka
+      - dimensionality-analysis
+      - cluster-tendency
+    required_adversary_disciplines:
+      - data-scientist-adversary
+      - ml-engineer-adversary
+    tripwire: null
+    depends_on_stages:
+      - S5
+    producer_disciplines:
+      - data-scientist
+      - ml-engineer
+    tier_b_min_frameworks: null
+
+  S7:
+    stage_id: S7
+    applies_to: per-framework
+    description: "Investigations (one study per registered question)"
+    required_artifacts:
+      - statistical-investigation  # one per question; name includes question-id
+      - bootstrap-confidence-intervals
+      - robust-finding-certificate
+      - provisional-finding-certificate
+    required_adversary_disciplines:
+      - data-scientist-adversary
+    tripwire: null
+    depends_on_stages:
+      - S6
+    producer_disciplines:
+      - data-scientist
+      - research-analyst
+    tier_b_min_frameworks: null
+
+  S8f:
+    stage_id: S8f
+    applies_to: per-framework
+    description: "Within-framework triangulation (evidence-dependency graph)"
+    required_artifacts:
+      - evidence-dependency-graph
+      - triangulation-report
+      - robustness-classification
+    required_adversary_disciplines:
+      - knowledge-synthesizer-adversary
+    tripwire: null
+    depends_on_stages:
+      - S7
+    producer_disciplines:
+      - knowledge-synthesizer
+      - data-scientist
+    tier_b_min_frameworks: null
+
+  S9:
+    stage_id: S9
+    applies_to: per-framework
+    description: "Adversarial replication (independent team, different model, blind to results)"
+    required_artifacts:
+      - replication-study-results
+      - replication-certificate
+    required_adversary_disciplines:
+      - data-scientist-adversary
+      - ml-engineer-adversary
+    tripwire: null
+    depends_on_stages:
+      - S8f
+    producer_disciplines:
+      - data-scientist  # different instance/model than S7
+      - ml-engineer     # different instance/model than S5
+    tier_b_min_frameworks: null
+
+  X1:
+    stage_id: X1
+    applies_to: synthesis
+    description: "Alignment (map each framework onto common substrate via SCF crosswalk)"
+    required_artifacts:
+      - alignment-mapping
+      - crosswalk-quality-report
+      - aligned-control-sets
+    required_adversary_disciplines:
+      - data-engineer-adversary
+      - data-scientist-adversary
+    tripwire: null
+    depends_on_stages:
+      - S9  # at least 2 frameworks must be certified through S9
+    producer_disciplines:
+      - data-engineer
+      - data-scientist
+    tier_b_min_frameworks: 2  # X1 blocks until ≥2 frameworks clear S9
+
+  X2:
+    stage_id: X2
+    applies_to: synthesis
+    description: "Cross-framework triangulation (test which results replicate)"
+    required_artifacts:
+      - replication-matrix
+      - intrinsic-findings
+      - framework-specific-findings
+      - crosswalk-dependent-findings
+    required_adversary_disciplines:
+      - knowledge-synthesizer-adversary
+    tripwire: null
+    depends_on_stages:
+      - X1
+    producer_disciplines:
+      - data-scientist
+      - knowledge-synthesizer
+    tier_b_min_frameworks: null
+
+  X3:
+    stage_id: X3
+    applies_to: synthesis
+    description: "Insight & gap map (description of what was found)"
+    required_artifacts:
+      - insight-and-gap-report
+      - evidence-classification-map
+      - limitation-report
+    required_adversary_disciplines:
+      - knowledge-synthesizer-adversary
+    tripwire: null
+    depends_on_stages:
+      - X2
+    producer_disciplines:
+      - knowledge-synthesizer
+      - data-scientist
+    tier_b_min_frameworks: null
+
+  X4:
+    stage_id: X4
+    applies_to: synthesis
+    description: "Stance synthesis (derive theory from findings, late and gated)"
+    required_artifacts:
+      - stance-document
+      - evidence-traceability-map
+      - overclaim-resistance-report
+    required_adversary_disciplines:
+      - knowledge-synthesizer-adversary
+      - competitive-analyst
+      - product-manager
+    tripwire:
+      id: T4
+      description: "Sign off stance synthesis before it is written"
+    depends_on_stages:
+      - X3
+    producer_disciplines:
+      - knowledge-synthesizer
+      - first-principles-thinking
+    tier_b_min_frameworks: null
+
+  X5:
+    stage_id: X5
+    applies_to: synthesis
+    description: "Release (peer-review-ready record + leadership translation + reproducibility)"
+    required_artifacts:
+      - scientific-record
+      - leadership-summary
+      - reproducibility-package
+      - run-instructions
+    required_adversary_disciplines:
+      - documentation-engineer-adversary
+      - technical-writer-adversary
+    tripwire:
+      id: T5
+      description: "Publication; one human read before release"
+    depends_on_stages:
+      - X4
+    producer_disciplines:
+      - documentation-engineer
+      - technical-writer
+      - product-manager
+    tier_b_min_frameworks: null
+
+# Framework list (used to enumerate per-framework stages)
+frameworks:
+  - scf
+  - nist-800-53
+  - nist-800-171
+  - nist-csf-2.0
+  - cis-v8
+
+# Artifact type registry (used to validate artifact_type fields in registry entries)
+artifact_types:
+  # P0, P1
+  - orchestration-harness
+  - test-automation-suite
+  - agent-roster
+  - preregistration-document
+  - research-questions
+  - analysis-plans
+  - decision-rules
+
+  # S3
+  - synthetic-corpus
+  - method-validation-results
+  - validated-methods-registry
+
+  # S1f
+  - framework-instantiation
+  - control-taxonomy
+  - question-bindings
+
+  # S4
+  - control-assets
+  - corpus-metadata
+  - lineage-record
+  - crosswalk
+
+  # S5
+  - enriched-control-text
+  - embedding-model-1
+  - embedding-model-2
+  - embedding-model-3
+  - embedding-selection-criterion
+
+  # S6
+  - construct-validity-report
+  - cross-model-cka
+  - dimensionality-analysis
+  - cluster-tendency
+
+  # S7
+  - statistical-investigation
+  - bootstrap-confidence-intervals
+  - robust-finding-certificate
+  - provisional-finding-certificate
+
+  # S8f
+  - evidence-dependency-graph
+  - triangulation-report
+  - robustness-classification
+
+  # S9
+  - replication-study-results
+  - replication-certificate
+
+  # X1–X5
+  - alignment-mapping
+  - crosswalk-quality-report
+  - aligned-control-sets
+  - replication-matrix
+  - intrinsic-findings
+  - framework-specific-findings
+  - crosswalk-dependent-findings
+  - insight-and-gap-report
+  - evidence-classification-map
+  - limitation-report
+  - stance-document
+  - evidence-traceability-map
+  - overclaim-resistance-report
+  - scientific-record
+  - leadership-summary
+  - reproducibility-package
+  - run-instructions

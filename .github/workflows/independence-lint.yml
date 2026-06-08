@@ -1,0 +1,147 @@
+name: independence-lint
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  independence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run independence lint
+        run: |
+          python - <<'PYEOF'
+          import json
+          import sys
+          import pathlib
+          from collections import defaultdict
+
+          FRAMEWORK_NAMES = {"scf", "nist-800-53", "nist-csf-2.0", "nist-800-171", "cis-v8"}
+          VALID_STANCES = {
+              "independent-reconstruction",
+              "falsification-probe",
+              "competing-hypotheses",
+              "assumption-ledger",
+              "premortem",
+          }
+          # Stages where cross-framework depends_on is forbidden
+          INDEPENDENCE_REQUIRED_STAGES = {"s7", "s8f"}
+          INTRINSIC_EVIDENCE_CLASSES = {"intrinsic", "robust"}
+
+          def framework_of(artifact_id: str) -> str | None:
+              parts = artifact_id.split("/")
+              return parts[0] if parts[0] in FRAMEWORK_NAMES else None
+
+          def stage_of(artifact_id: str) -> str | None:
+              parts = artifact_id.split("/")
+              return parts[1].lower() if len(parts) >= 2 else None
+
+          registry_root = pathlib.Path("registry")
+          errors: list[str] = []
+
+          if not registry_root.exists():
+              print("No registry directory — nothing to lint.")
+              sys.exit(0)
+
+          all_artifacts: dict[str, dict] = {}
+          parse_failed = False
+          for jf in registry_root.rglob("*.json"):
+              if "schema" in str(jf) or "ledger" in str(jf):
+                  continue
+              try:
+                  with jf.open() as f:
+                      d = json.load(f)
+                  aid = d.get("artifact_id")
+                  if aid:
+                      all_artifacts[aid] = d
+              except Exception as exc:
+                  # A file that fails to parse is a provenance gap, not a skip.
+                  # Record the error and mark the run as failed.
+                  errors.append(
+                      f"PARSE_ERROR {jf}: could not parse registry file — {exc}. "
+                      f"This is a provenance gap; fix the file before merging."
+                  )
+                  parse_failed = True
+
+          for artifact_id, artifact in all_artifacts.items():
+              stage = stage_of(artifact_id)
+              this_fw = framework_of(artifact_id)
+              depends_on: list[str] = artifact.get("depends_on", [])
+              evidence_class: str = artifact.get("evidence_class", "")
+              limitations: list[str] = artifact.get("limitations", [])
+              stance: str = artifact.get("stance", "")
+
+              # Rule 1: S7/S8f artifacts must not depend on artifacts from a different framework
+              if stage in INDEPENDENCE_REQUIRED_STAGES and this_fw:
+                  for dep_id in depends_on:
+                      dep_fw = framework_of(dep_id)
+                      if dep_fw and dep_fw != this_fw:
+                          errors.append(
+                              f"INDEPENDENCE_VIOLATION {artifact_id}: stage {stage} artifact "
+                              f"depends on cross-framework artifact '{dep_id}' (framework '{dep_fw}'). "
+                              f"Rule: no cross-framework depends_on in S7/S8f."
+                          )
+
+              # Rule 2: intrinsic/robust evidence class artifacts sharing an embedding dep
+              # must both declare that correlation in limitations.
+              # "Sharing an embedding" means: two artifacts both list the same artifact_id
+              # in their depends_on, and that artifact_id resolves to a registered artifact
+              # whose stage is S5 (the embedding stage). String matching on "embedding" or
+              # "s5" in the dep ID is not used — the stage is derived from the actual registry.
+              if evidence_class in INTRINSIC_EVIDENCE_CLASSES:
+                  embedding_deps = [
+                      dep_id for dep_id in depends_on
+                      if dep_id in all_artifacts and stage_of(dep_id) == "s5"
+                  ]
+                  for emb_dep in embedding_deps:
+                      # Check sibling artifacts with same evidence class that also share this dep
+                      siblings = [
+                          (sid, sa)
+                          for sid, sa in all_artifacts.items()
+                          if sid != artifact_id
+                          and sa.get("evidence_class") in INTRINSIC_EVIDENCE_CLASSES
+                          and emb_dep in sa.get("depends_on", [])
+                      ]
+                      for sid, sa in siblings:
+                          # Both must declare the correlation in limitations
+                          this_declares = any("embedding" in str(l).lower() or "correlated" in str(l).lower()
+                                              for l in limitations)
+                          sibling_declares = any(
+                              "embedding" in str(l).lower() or "correlated" in str(l).lower()
+                              for l in sa.get("limitations", [])
+                          )
+                          if not this_declares:
+                              errors.append(
+                                  f"CORRELATION_UNDECLARED {artifact_id}: evidence_class="
+                                  f"'{evidence_class}', shares embedding dep '{emb_dep}' with "
+                                  f"'{sid}', but 'limitations' does not declare the correlation."
+                              )
+                          if not sibling_declares:
+                              errors.append(
+                                  f"CORRELATION_UNDECLARED {sid}: evidence_class="
+                                  f"'{sa.get('evidence_class')}', shares embedding dep '{emb_dep}' "
+                                  f"with '{artifact_id}', but 'limitations' does not declare the correlation."
+                              )
+
+              # Rule 3: stance field must match a valid rotating-stance enum (when present)
+              if stance and stance not in VALID_STANCES:
+                  errors.append(
+                      f"INVALID_STANCE {artifact_id}: stance='{stance}' is not a valid rotating "
+                      f"stance. Valid values: {sorted(VALID_STANCES)}"
+                  )
+
+          if errors:
+              print("\nIndependence lint FAILED:\n")
+              for e in errors:
+                  print(f"  ERROR: {e}")
+              sys.exit(1)
+          else:
+              print(f"Independence lint passed ({len(all_artifacts)} artifacts checked).")
+          PYEOF

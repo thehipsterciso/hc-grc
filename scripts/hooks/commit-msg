@@ -1,0 +1,53 @@
+#!/bin/bash
+# Enforce commit message format for hc-grc.
+#
+# Rules:
+# 1. Registry/ledger/tripwire commits: must have [STAGE:FRAMEWORK] tag and artifact_id reference
+# 2. All commits: conventional format recommended (feat/fix/chore/docs/etc)
+#
+# Exit 0 if message is valid, 1 if not.
+
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Check if this commit touches registry, ledger, or tripwires
+TOUCH_REGISTRY=0
+if git diff --cached --name-only | grep -qE '^(registry|ledger|docs/tripwires)/'; then
+  TOUCH_REGISTRY=1
+fi
+
+# For registry/ledger/tripwire commits, require [STAGE:FRAMEWORK] tag and artifact_id
+if [ $TOUCH_REGISTRY -eq 1 ]; then
+  # Check for [STAGE:FRAMEWORK] pattern (e.g., [S4:scf], [P1], [X1])
+  if ! echo "$COMMIT_MSG" | grep -qE '^\[([A-Z][0-9a-z]*)(:[a-z-]+)?\]'; then
+    echo "ERROR: Registry/ledger commits must start with [STAGE:FRAMEWORK] tag (e.g., [S4:scf], [P1])"
+    echo "Got: ${COMMIT_MSG%% *}"
+    exit 1
+  fi
+
+  # Check for artifact_id reference in the commit body
+  if ! echo "$COMMIT_MSG" | grep -qE '(Artifact ID|artifact_id|artifact-id):'; then
+    echo "ERROR: Registry/ledger commits must reference an artifact_id in the message body"
+    echo "Example:"
+    echo "  [S4:scf] control-asset: ingest NIST SCF taxonomy"
+    echo "  "
+    echo "  Artifact ID: scf-S4-controls-v2.1"
+    exit 1
+  fi
+fi
+
+# Gentle reminder for conventional format (warn, don't fail)
+first_line="${COMMIT_MSG%%$'\n'*}"
+if ! echo "$first_line" | grep -qE '^(\[|feat|fix|chore|docs|refactor|test|perf):'; then
+  if [ $TOUCH_REGISTRY -eq 0 ]; then
+    # Non-registry commit without conventional prefix — soft warning to stderr
+    # (disabled in CI, shown locally)
+    if [ -t 2 ]; then
+      echo "HINT: Consider using conventional format (feat/fix/chore/docs/...): $first_line" >&2
+    fi
+  fi
+fi
+
+exit 0

@@ -1,0 +1,110 @@
+name: lint-docs
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  required-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files exist and are non-stub
+        run: |
+          python - <<'PYEOF'
+          import sys
+          import pathlib
+
+          REQUIRED = [
+              "docs/BRANCHING.md",
+              "docs/REGISTRY.md",
+              "docs/LEDGER.md",
+              "docs/REPRODUCIBILITY.md",
+              "docs/CI.md",
+              "docs/STAGE_GATES.yaml",
+              "Makefile",
+          ]
+
+          errors: list[str] = []
+          for path_str in REQUIRED:
+              p = pathlib.Path(path_str)
+              if not p.exists():
+                  errors.append(f"MISSING: {path_str}")
+                  continue
+              content = p.read_text().strip()
+              if not content:
+                  errors.append(f"EMPTY: {path_str}")
+                  continue
+              # Stub check: only a single line (title-only file)
+              non_blank_lines = [l for l in content.splitlines() if l.strip()]
+              if len(non_blank_lines) <= 1:
+                  errors.append(f"STUB (title-only): {path_str}")
+
+          if errors:
+              print("\nRequired documentation check FAILED:\n")
+              for e in errors:
+                  print(f"  {e}")
+              print("\nAll files listed above must exist and contain substantive content.")
+              sys.exit(1)
+          else:
+              print(f"All {len(REQUIRED)} required files present and non-stub.")
+          PYEOF
+
+  markdown-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find changed markdown files
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          git diff --name-only "$BASE" HEAD -- '*.md' '**/*.md' 2>/dev/null \
+            > /tmp/changed_md.txt || true
+          echo "Changed markdown files:"
+          cat /tmp/changed_md.txt
+
+      - name: Check internal markdown links
+        run: |
+          python - <<'PYEOF'
+          import sys
+          import pathlib
+          import re
+
+          changed = pathlib.Path("/tmp/changed_md.txt").read_text().splitlines()
+          files = [f.strip() for f in changed if f.strip() and pathlib.Path(f.strip()).exists()]
+
+          # Match [text](link) — skip http/https (external) and anchors-only (#...)
+          LINK_RE = re.compile(r'\[(?:[^\]]*)\]\(([^)]+)\)')
+          errors: list[str] = []
+
+          for fpath_str in files:
+              fpath = pathlib.Path(fpath_str)
+              content = fpath.read_text()
+              for match in LINK_RE.finditer(content):
+                  href = match.group(1).split("#")[0].strip()
+                  if not href:
+                      continue  # anchor-only link
+                  if href.startswith("http://") or href.startswith("https://"):
+                      continue  # external — skip, no network in CI
+                  # Resolve relative to the file's directory
+                  resolved = (fpath.parent / href).resolve()
+                  repo_root = pathlib.Path(".").resolve()
+                  try:
+                      resolved.relative_to(repo_root)
+                  except ValueError:
+                      errors.append(f"{fpath}: link '{href}' resolves outside repo root")
+                      continue
+                  if not resolved.exists():
+                      errors.append(f"{fpath}: broken internal link '{href}' -> {resolved} (not found)")
+
+          if errors:
+              print("\nMarkdown link check FAILED:\n")
+              for e in errors:
+                  print(f"  {e}")
+              sys.exit(1)
+          else:
+              print(f"Checked {len(files)} markdown file(s) — all internal links valid.")
+          PYEOF

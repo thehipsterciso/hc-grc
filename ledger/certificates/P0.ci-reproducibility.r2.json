@@ -1,0 +1,46 @@
+{
+  "certificate_id": "P0.ci-reproducibility.r2",
+  "artifact_set": "P0 CI/reproducibility remediation round 2",
+  "stage_id": "P0",
+  "framework": "_program",
+  "producer": {
+    "agent": "mlops-engineer",
+    "model": "claude-sonnet-4-6"
+  },
+  "adversary": {
+    "agent": "ml-engineer-adversary",
+    "model": "claude-opus-4-8",
+    "family": "anthropic",
+    "stance": "falsification-probe"
+  },
+  "verdict": "PASS",
+  "rounds": 2,
+  "date": "2026-06-08",
+  "files_certified": [
+    ".github/workflows/certificate-completeness.yml",
+    ".github/workflows/provenance-integrity.yml",
+    ".github/workflows/registry-validate.yml",
+    ".github/workflows/repro-smoke.yml",
+    ".github/workflows/prereg-freeze-guard.yml",
+    ".github/workflows/independence-lint.yml",
+    ".github/workflows/pin-docker-digest.yml",
+    ".github/workflows/python-quality.yml",
+    "repro/Dockerfile",
+    "Makefile",
+    "docs/CI.md",
+    "docs/REPRODUCIBILITY.md",
+    "scripts/setup-branch-protection.sh"
+  ],
+  "transcript_refs": [
+    "transcripts/P0/_program/mlops-engineer-fix-2026-06-08.md",
+    "transcripts/P0/_program/ml-engineer-adversary-r1-2026-06-08.md",
+    "transcripts/P0/_program/ml-engineer-adversary-r2-2026-06-08.md"
+  ],
+  "round_1_rejection_summary": "provenance-integrity.yml checked adversary is None + top-level self_attested, but schema places self_attested inside adversary object; the two required checks were mutually exclusive — no P0 self-attested artifact could pass both",
+  "residual_limitations": [
+    "Producer and adversary share Anthropic family — Layer-3 weight independence is tier-level only",
+    "Verification by static trace of CI logic, not by executing GitHub Actions runners against fixture artifacts",
+    "Workflow's self-attestation exception has no independent stage_id guard — depends on registry-validate.yml which silently skips when schema file absent; no current exploitable path",
+    "stage_gate.py --validate-all not audited; certificate-completeness main gate unverified end-to-end"
+  ]
+}

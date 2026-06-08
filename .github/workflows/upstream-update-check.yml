@@ -1,0 +1,175 @@
+name: upstream-update-check
+
+# Run quarterly (first Monday of each quarter at 09:00 UTC) to check for upstream updates.
+# The cron schedule uses day-of-month 1 with specific months (Jan, Apr, Jul, Oct) as an
+# approximation to "first Monday"; for strict first-Monday scheduling, use a workflow_dispatch
+# trigger combined with a manual schedule or a more sophisticated action.
+on:
+  schedule:
+    # 09:00 UTC on the 1st of Jan, Apr, Jul, Oct (first-Monday approximation)
+    - cron: '0 9 1 1,4,7,10 *'
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+jobs:
+  check-upstream-updates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false  # Don't fetch submodules; we'll check tags only
+
+      - name: Check SCF for new releases
+        id: scf-check
+        run: |
+          echo "Checking SCF for new releases..."
+
+          # Get current pin from .gitmodules
+          CURRENT_PIN=$(git config --file .gitmodules submodule.upstream/scf.url | xargs -I {} git ls-remote {} | grep refs/tags | tail -1)
+          if [ -z "$CURRENT_PIN" ]; then
+            echo "Could not fetch current SCF pin. Skipping."
+            exit 0
+          fi
+
+          # Extract the tag
+          CURRENT_TAG=$(git config -f .gitmodules submodule."upstream/scf".url > /dev/null 2>&1 && \
+            git ls-remote --tags $(git config -f .gitmodules submodule."upstream/scf".url) | grep -oE '2026\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          echo "Current SCF tag: $CURRENT_TAG"
+
+      - name: Check NIST OSCAL for new releases
+        id: oscal-check
+        run: |
+          echo "Checking NIST OSCAL for new releases..."
+
+          # Get the NIST OSCAL submodule URL and fetch tags
+          OSCAL_URL=$(git config -f .gitmodules submodule."upstream/oscal-content".url)
+
+          # Get the latest semantic version tag
+          LATEST_TAG=$(git ls-remote --tags "$OSCAL_URL" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest NIST OSCAL tag: $LATEST_TAG"
+
+      - name: Get current SCF pin
+        id: scf-current
+        run: |
+          # Parse .gitmodules to get the current pin
+          SUBMODULE_COMMIT=$(git ls-tree HEAD upstream/scf | awk '{print $3}' | cut -c1-40)
+          echo "current_commit=$SUBMODULE_COMMIT" >> $GITHUB_OUTPUT
+
+          # Fetch the tag that corresponds to this commit
+          SCF_URL=$(git config -f .gitmodules submodule."upstream/scf".url)
+          CURRENT_TAG=$(git ls-remote --tags "$SCF_URL" | grep "$SUBMODULE_COMMIT" | grep -oE '2026\.[0-9]+(\.[0-9]+)?' | head -1)
+
+          if [ -z "$CURRENT_TAG" ]; then
+            # If exact match not found, just list what we have
+            CURRENT_TAG=$(git ls-remote --tags "$SCF_URL" | grep -oE '2026\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          fi
+
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          echo "Current SCF pin: $CURRENT_TAG"
+
+      - name: Get current NIST OSCAL pin
+        id: oscal-current
+        run: |
+          SUBMODULE_COMMIT=$(git ls-tree HEAD upstream/oscal-content | awk '{print $3}' | cut -c1-40)
+          echo "current_commit=$SUBMODULE_COMMIT" >> $GITHUB_OUTPUT
+
+          OSCAL_URL=$(git config -f .gitmodules submodule."upstream/oscal-content".url)
+          CURRENT_TAG=$(git ls-remote --tags "$OSCAL_URL" | grep "$SUBMODULE_COMMIT" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+
+          if [ -z "$CURRENT_TAG" ]; then
+            CURRENT_TAG=$(git ls-remote --tags "$OSCAL_URL" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          fi
+
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          echo "Current NIST OSCAL pin: $CURRENT_TAG"
+
+      - name: Check for SCF updates and open issue
+        if: steps.scf-check.outputs.current_tag != ''
+        run: |
+          SCF_URL=$(git config -f .gitmodules submodule."upstream/scf".url)
+          LATEST=$(git ls-remote --tags "$SCF_URL" | grep -oE '2026\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          CURRENT="${{ steps.scf-current.outputs.current_tag }}"
+
+          if [ "$LATEST" != "$CURRENT" ] && [ ! -z "$LATEST" ]; then
+            echo "SCF update available: $CURRENT → $LATEST"
+
+            # Fetch the tag message/changelog
+            CHANGELOG=$(git ls-remote --tags "$SCF_URL" | grep "$LATEST" | awk '{print $1}')
+
+            # Create issue (requires gh CLI and auth)
+            gh issue create \
+              --title "Upstream update available: SCF $LATEST" \
+              --body "A new version of the Secure Controls Framework is available.
+
+**Current version:** $CURRENT
+**Available version:** $LATEST
+
+**Action required:** Review the release notes at https://github.com/securecontrolsframework/securecontrolsframework/releases/tag/$LATEST and confirm license/schema compatibility before updating.
+
+To update (after approval):
+\`\`\`bash
+git -C upstream/scf fetch --tags
+git -C upstream/scf checkout $LATEST
+git add upstream/scf
+git commit -m \"chore: pin SCF to $LATEST\"
+git push
+\`\`\`
+
+**Type:** T2-adjacent gate (upstream source update)
+**Auto-generated by:** upstream-update-check.yml
+" \
+              --label "upstream-update,scf,todo" \
+              || echo "Issue creation failed or issue already exists."
+          else
+            echo "SCF is up to date: $CURRENT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for NIST OSCAL updates and open issue
+        if: steps.oscal-check.outputs.latest_tag != ''
+        run: |
+          OSCAL_URL=$(git config -f .gitmodules submodule."upstream/oscal-content".url)
+          LATEST=$(git ls-remote --tags "$OSCAL_URL" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          CURRENT="${{ steps.oscal-current.outputs.current_tag }}"
+
+          if [ "$LATEST" != "$CURRENT" ] && [ ! -z "$LATEST" ]; then
+            echo "NIST OSCAL update available: $CURRENT → $LATEST"
+
+            gh issue create \
+              --title "Upstream update available: NIST OSCAL $LATEST" \
+              --body "A new version of the NIST OSCAL framework content is available.
+
+**Current version:** $CURRENT
+**Available version:** $LATEST
+
+**Action required:** Review the release notes at https://github.com/usnistgov/oscal-content/releases/tag/$LATEST and confirm license/schema compatibility before updating. This may affect one or more framework studies (SP 800-53, SP 800-171, CSF).
+
+To update (after approval):
+\`\`\`bash
+git -C upstream/oscal-content fetch --tags
+git -C upstream/oscal-content checkout $LATEST
+git add upstream/oscal-content
+git commit -m \"chore: pin NIST OSCAL to $LATEST\"
+git push
+\`\`\`
+
+**Type:** T2-adjacent gate (upstream source update)
+**Auto-generated by:** upstream-update-check.yml
+" \
+              --label "upstream-update,oscal,todo" \
+              || echo "Issue creation failed or issue already exists."
+          else
+            echo "NIST OSCAL is up to date: $CURRENT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify CIS archived status
+        run: |
+          CIS_URL=$(git config -f .gitmodules submodule."upstream/cis-controls-oscal".url)
+          echo "CIS Controls OSCAL repository: $CIS_URL"
+          echo "Note: This repository is archived. No updates are expected or checked."

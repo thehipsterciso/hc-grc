@@ -1,0 +1,12 @@
+[submodule "upstream/awesome-claude-code-subagents"]
+	path = upstream/awesome-claude-code-subagents
+	url = https://github.com/VoltAgent/awesome-claude-code-subagents.git
+[submodule "upstream/oscal-content"]
+	path = upstream/oscal-content
+	url = https://github.com/usnistgov/oscal-content.git
+[submodule "upstream/scf"]
+	path = upstream/scf
+	url = https://github.com/securecontrolsframework/securecontrolsframework.git
+[submodule "upstream/cis-controls-oscal"]
+	path = upstream/cis-controls-oscal
+	url = https://github.com/CISecurity/CISControls_OSCAL.git

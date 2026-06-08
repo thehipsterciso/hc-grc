@@ -1,0 +1,398 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hc-grc/registry/schema/artifact.schema.json",
+  "title": "Registry Artifact Entry",
+  "description": "Schema for a hc-grc registry artifact entry. Every artifact registered by context-manager must satisfy this schema. Fields enforced by stage_gate.py --validate-artifact are marked [gate-enforced]. Full provenance fields per CLAUDE.md hard constraint #8 are marked [provenance].",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "artifact_type",
+    "stage_id",
+    "certificate_ref",
+    "framework",
+    "question_id",
+    "producer",
+    "adversary",
+    "stance",
+    "content_hash",
+    "reproduction",
+    "source_version",
+    "git_commit",
+    "evidence_class",
+    "depends_on",
+    "transcript_ref",
+    "created_at",
+    "registry_version",
+    "revision_history"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "artifact_id": {
+      "type": "string",
+      "description": "[gate-enforced] Unique identifier for this artifact. Convention: <stage_id>-<artifact_type>[-<framework>]-<short-slug>. Must be globally unique within the registry.",
+      "minLength": 1
+    },
+    "artifact_type": {
+      "type": "string",
+      "description": "[gate-enforced] Artifact type drawn from the artifact_types enum in docs/STAGE_GATES.yaml. stage_gate.py rejects any value not in that list.",
+      "enum": [
+        "orchestration-harness",
+        "test-automation-suite",
+        "agent-roster",
+        "preregistration-document",
+        "research-questions",
+        "analysis-plans",
+        "decision-rules",
+        "synthetic-corpus",
+        "method-validation-results",
+        "validated-methods-registry",
+        "framework-instantiation",
+        "control-taxonomy",
+        "question-bindings",
+        "control-assets",
+        "corpus-metadata",
+        "lineage-record",
+        "crosswalk",
+        "enriched-control-text",
+        "embedding-model-1",
+        "embedding-model-2",
+        "embedding-model-3",
+        "embedding-selection-criterion",
+        "construct-validity-report",
+        "cross-model-cka",
+        "dimensionality-analysis",
+        "cluster-tendency",
+        "statistical-investigation",
+        "bootstrap-confidence-intervals",
+        "robust-finding-certificate",
+        "provisional-finding-certificate",
+        "evidence-dependency-graph",
+        "triangulation-report",
+        "robustness-classification",
+        "replication-study-results",
+        "replication-certificate",
+        "alignment-mapping",
+        "crosswalk-quality-report",
+        "aligned-control-sets",
+        "replication-matrix",
+        "intrinsic-findings",
+        "framework-specific-findings",
+        "crosswalk-dependent-findings",
+        "insight-and-gap-report",
+        "evidence-classification-map",
+        "limitation-report",
+        "stance-document",
+        "evidence-traceability-map",
+        "overclaim-resistance-report",
+        "scientific-record",
+        "leadership-summary",
+        "reproducibility-package",
+        "run-instructions"
+      ]
+    },
+    "stage_id": {
+      "type": "string",
+      "description": "[gate-enforced] Stage this artifact belongs to. Must be one of the stages defined in docs/STAGE_GATES.yaml.",
+      "enum": [
+        "P0",
+        "P1",
+        "S1f",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "S8f",
+        "S9",
+        "X1",
+        "X2",
+        "X3",
+        "X4",
+        "X5"
+      ]
+    },
+    "certificate_ref": {
+      "type": "string",
+      "description": "[gate-enforced] Stem of the certificate filename under ledger/certificates/. Full path: ledger/certificates/<certificate_ref>.json. stage_gate.py resolves this path and requires verdict == ACCEPT.",
+      "minLength": 1
+    },
+    "framework": {
+      "type": ["string", "null"],
+      "description": "[provenance] Framework this artifact belongs to (e.g. scf, nist-800-53). Null for program-level or synthesis stages (P0, P1, S3, X1-X5). Required and non-null for per-framework stages (S1f, S4-S9).",
+      "enum": [
+        "scf",
+        "nist-800-53",
+        "nist-800-171",
+        "nist-csf-2.0",
+        "cis-v8",
+        null
+      ]
+    },
+    "question_id": {
+      "description": "[provenance] For investigation artifacts (S7, X2): the registered question ID this artifact answers. Null for non-investigation artifacts; when null, null_reason is required.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "null_reason": {
+      "type": "string",
+      "description": "Required when question_id is null. Explains why this artifact has no associated question (e.g., 'infrastructure artifact', 'corpus construction', 'instrument validation').",
+      "minLength": 1
+    },
+    "producer": {
+      "type": "object",
+      "description": "[provenance] The agent and model that produced this artifact.",
+      "required": ["agent", "model"],
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string",
+          "description": "Agent discipline identifier (e.g. context-manager, data-scientist, nlp-engineer).",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "description": "Model identifier used for production (e.g. claude-sonnet-4-6, claude-opus-4-5).",
+          "minLength": 1
+        }
+      }
+    },
+    "adversary": {
+      "description": "[provenance] The adversary that certified this artifact. For P0 stage (required_adversary_disciplines: []) this must be the self-attestation form. For all other stages this must be the full adversary review form with agent, model, and family.",
+      "oneOf": [
+        {
+          "type": "object",
+          "title": "Adversary review (stages P1+)",
+          "description": "Used for all stages with at least one required adversary discipline. The adversary is a same-discipline Tier-2 agent running a different model from the producer.",
+          "required": ["agent", "model", "family", "stance"],
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string",
+              "description": "Adversary agent discipline identifier (e.g. data-scientist-adversary).",
+              "minLength": 1
+            },
+            "model": {
+              "type": "string",
+              "description": "Model used by the adversary. Should differ from the producer's model for Layer-3 weight independence.",
+              "minLength": 1
+            },
+            "family": {
+              "type": "string",
+              "description": "Model family of the adversary (always 'anthropic' in this program). Explicit so the single-family limitation is surfaced in every record.",
+              "minLength": 1
+            },
+            "stance": {
+              "type": "string",
+              "description": "Rotating review stance applied by the adversary.",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "title": "Self-attestation (P0 only)",
+          "description": "Used only for stage P0 (required_adversary_disciplines: []). The coordinator or Tier-0 agent attests the artifact meets the stage DoD. No same-discipline adversary review by gate design.",
+          "required": ["self_attested", "reason"],
+          "additionalProperties": false,
+          "properties": {
+            "self_attested": {
+              "type": "boolean",
+              "const": true,
+              "description": "Must be true. Signals this artifact bypasses same-discipline adversary review per P0 gate design."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Explains why self-attestation applies (must reference P0 stage gate definition).",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "stance": {
+      "type": ["string", "null"],
+      "description": "The rotating review stance the adversary applied. Null for P0 self-attested artifacts.",
+      "enum": [
+        "independent-reconstruction",
+        "falsification-probe",
+        "competing-hypotheses",
+        "assumption-ledger",
+        "premortem",
+        null
+      ]
+    },
+    "content_hash": {
+      "type": "string",
+      "description": "[provenance] SHA-256 hex of the artifact's canonical serialization (UTF-8 JSON, keys sorted, no trailing whitespace). Used to detect drift between registry record and stored artifact.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reproduction": {
+      "type": "object",
+      "description": "[provenance] Everything needed to re-run the producing computation from scratch.",
+      "required": ["seed", "container_digest", "command", "input_hashes"],
+      "additionalProperties": false,
+      "properties": {
+        "seed": {
+          "type": ["integer", "null"],
+          "description": "Random seed used in this run. Null for deterministic or non-stochastic artifacts."
+        },
+        "container_digest": {
+          "type": ["string", "null"],
+          "description": "OCI image digest (sha256:...) of the compute container used. Null for non-containerized artifacts.",
+          "minLength": 1
+        },
+        "command": {
+          "type": "string",
+          "description": "Full CLI invocation or script path that produces this artifact from the inputs.",
+          "minLength": 1
+        },
+        "input_hashes": {
+          "type": "array",
+          "description": "SHA-256 content hashes of all direct inputs consumed by this artifact's producing run.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "source_version": {
+      "type": "string",
+      "description": "[provenance] Version or content hash of the primary source consumed by this artifact (e.g. sha256 of the framework PDF, a framework version tag). Enables downstream reproducibility checks.",
+      "minLength": 1
+    },
+    "git_commit": {
+      "type": "string",
+      "description": "[provenance] Full SHA-1 git commit hash at the time of registration. Required for complete provenance per CLAUDE.md #8.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "evidence_class": {
+      "type": ["string", "null"],
+      "description": "Evidence classification for finding-type artifacts. 'robust': replicates across the embedding ensemble and (for cross-framework claims) across independently-authored frameworks. 'intrinsic': holds across all frameworks. 'framework-specific': holds in some frameworks only. 'crosswalk-dependent': sensitive to alignment quality. 'provisional': single-team, pending replication. 'descriptive': observational/structural, not inferential. 'not-applicable': non-finding artifact (infrastructure, corpus, instrument).",
+      "enum": [
+        "robust",
+        "provisional",
+        "intrinsic",
+        "framework-specific",
+        "crosswalk-dependent",
+        "descriptive",
+        "not-applicable",
+        null
+      ]
+    },
+    "depends_on": {
+      "type": "array",
+      "description": "[provenance] List of artifact_ids this artifact directly depends on. Empty array for root artifacts. Used to construct the evidence-dependency graph in S8f and X2.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "description": "Acknowledged limitations for this artifact. Required (min 1 item) when evidence_class is 'robust' or 'intrinsic'. Must include the model-independence note when the artifact feeds cross-framework synthesis.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "transcript_ref": {
+      "type": "string",
+      "description": "[provenance] Relative path to the agent transcript file from repo root, e.g. transcripts/S4/scf/data-engineer-2026-06-08T12:00:00Z.md. Combined with reproduction, provides full provenance per CLAUDE.md #8.",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp when context-manager wrote this registry entry.",
+      "format": "date-time"
+    },
+    "registry_version": {
+      "type": "string",
+      "description": "Schema version guard. Always '1.0'. Guards against consumers loading entries from a future incompatible schema.",
+      "const": "1.0"
+    },
+    "revision_history": {
+      "type": "array",
+      "description": "[provenance] Ordered list of revision records. Each entry documents a round of adversary rejection and producer revision. Empty array on first registration (no revisions yet).",
+      "items": {
+        "type": "object",
+        "required": ["round", "timestamp", "summary", "defect_ref"],
+        "additionalProperties": false,
+        "properties": {
+          "round": {
+            "type": "integer",
+            "description": "Revision round number (1-indexed).",
+            "minimum": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp of this revision.",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Short description of what changed in this revision.",
+            "minLength": 1
+          },
+          "defect_ref": {
+            "type": "string",
+            "description": "Reference to the defect record in ledger/defects/ (stem of the defect filename) that triggered this revision.",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this artifact contains."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "stage_id": {
+            "enum": ["S1f", "S4", "S5", "S6", "S7", "S8f", "S9"]
+          }
+        },
+        "required": ["stage_id"]
+      },
+      "then": {
+        "properties": {
+          "framework": {
+            "type": "string",
+            "enum": ["scf", "nist-800-53", "nist-800-171", "nist-csf-2.0", "cis-v8"]
+          }
+        },
+        "required": ["framework"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stage_id": { "not": { "enum": ["P0"] } }
+        },
+        "required": ["stage_id"]
+      },
+      "then": {
+        "properties": {
+          "adversary": {
+            "not": { "required": ["self_attested"] }
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "_p0_adversary_constraint": {
+      "$comment": "When stage_id is NOT P0, the adversary.self_attested form is not permitted. This is enforced by the allOf[1] if/then block above (schema-level, draft-07). stage_gate.py --validate-artifact triggers jsonschema.validate() which evaluates this constraint."
+    }
+  }
+}

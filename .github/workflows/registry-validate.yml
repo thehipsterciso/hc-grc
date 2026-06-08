@@ -1,0 +1,119 @@
+name: registry-validate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install jsonschema
+        run: pip install jsonschema==4.22.0
+
+      - name: Find changed registry JSON files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            # On first push, base is all zeros; fall back to HEAD~1 or all files
+            if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="HEAD"
+            fi
+          fi
+          git diff --name-only "$BASE" HEAD -- 'registry/**/*.json' 2>/dev/null \
+            | tee /tmp/changed_registry.txt || true
+          # If empty (e.g. initial push), validate all
+          if [ ! -s /tmp/changed_registry.txt ]; then
+            find registry -name '*.json' 2>/dev/null > /tmp/changed_registry.txt || true
+          fi
+          echo "Files to validate:"
+          cat /tmp/changed_registry.txt
+
+      - name: Validate registry entries
+        run: |
+          python - <<'PYEOF'
+          import json
+          import sys
+          import pathlib
+          import jsonschema
+
+          schema_path = pathlib.Path("registry/schema/artifact.schema.json")
+          if not schema_path.exists():
+              print("No schema found at registry/schema/artifact.schema.json — skipping schema validation.")
+              sys.exit(0)
+
+          with schema_path.open() as f:
+              schema = json.load(f)
+
+          changed_file = pathlib.Path("/tmp/changed_registry.txt")
+          files = [l.strip() for l in changed_file.read_text().splitlines() if l.strip()]
+
+          errors: list[str] = []
+          for fpath_str in files:
+              fpath = pathlib.Path(fpath_str)
+              if not fpath.exists():
+                  continue
+              try:
+                  with fpath.open() as f:
+                      artifact = json.load(f)
+              except json.JSONDecodeError as e:
+                  errors.append(f"{fpath}: malformed JSON — {e}")
+                  continue
+
+              # Schema validation
+              try:
+                  jsonschema.validate(artifact, schema)
+              except jsonschema.ValidationError as e:
+                  errors.append(f"{fpath}: schema error — {e.message} (path: {list(e.absolute_path)})")
+                  continue
+
+              # certificate_ref → must resolve to ledger/certificates/{certificate_ref}.json
+              # This is not a soft check: a missing ledger dir or missing file is a hard failure,
+              # not a skip. The "no error if dir missing" silent bypass is explicitly forbidden.
+              cert_ref = artifact.get("certificate_ref")
+              if cert_ref:
+                  ledger_dir = pathlib.Path("ledger/certificates")
+                  if not ledger_dir.exists():
+                      errors.append(
+                          f"{fpath}: certificate_ref '{cert_ref}' cannot be resolved — "
+                          f"directory 'ledger/certificates/' does not exist. "
+                          f"Create the directory and add the certificate file."
+                      )
+                  else:
+                      cert_path = ledger_dir / f"{cert_ref}.json"
+                      if not cert_path.exists():
+                          errors.append(
+                              f"{fpath}: certificate_ref '{cert_ref}' has no corresponding file at "
+                              f"ledger/certificates/{cert_ref}.json"
+                          )
+
+              # transcript_ref → file must exist in repo
+              transcript_ref = artifact.get("transcript_ref")
+              if transcript_ref:
+                  if not pathlib.Path(transcript_ref).exists():
+                      errors.append(
+                          f"{fpath}: transcript_ref '{transcript_ref}' does not exist in repo"
+                      )
+
+          if errors:
+              print("\nRegistry validation FAILED:\n")
+              for e in errors:
+                  print(f"  ERROR: {e}")
+              sys.exit(1)
+          else:
+              print(f"Validated {len(files)} registry file(s) — all passed.")
+          PYEOF

@@ -1,0 +1,57 @@
+name: agent-sync-check
+
+# Validates that .claude/agents/ (the agent roster auto-loaded by Claude Code) remains
+# in sync with the upstream awesome-claude-code-subagents framework and the native
+# adversary agents defined in scripts/sync-agents.sh.
+#
+# NOTE: This workflow triggers ONLY on the agent submodule and agent roster files.
+# It does NOT trigger on framework submodules (scf, oscal-content, cis-controls-oscal),
+# which are managed separately via upstream-update-check.yml.
+
+on:
+  pull_request:
+    paths:
+      - "agents/**"
+      - ".claude/agents/**"
+      - "scripts/sync-agents.sh"
+      - ".gitmodules"
+      - "upstream/awesome-claude-code-subagents/**"
+
+jobs:
+  sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run agent sync dry-run
+        run: bash scripts/sync-agents.sh --dry-run
+
+      - name: Verify no divergence
+        run: |
+          # After dry-run, check that .claude/agents/ matches what sync would produce.
+          # sync-agents.sh --dry-run writes its expected manifest to /tmp/sync-expected.txt
+          # The check below verifies the actual .claude/agents/ matches.
+          if [ -f /tmp/sync-expected.txt ]; then
+            EXPECTED=$(sort /tmp/sync-expected.txt)
+            ACTUAL=$(find .claude/agents -maxdepth 1 -name '*.md' ! -name 'README.md' \
+              -exec basename {} \; | sort)
+            if [ "$EXPECTED" != "$ACTUAL" ]; then
+              echo "ERROR: .claude/agents/ would diverge from expected agent set."
+              echo ""
+              echo "Expected (from sync-agents.sh --dry-run):"
+              echo "$EXPECTED"
+              echo ""
+              echo "Actual (.claude/agents/):"
+              echo "$ACTUAL"
+              echo ""
+              echo "Run 'bash scripts/sync-agents.sh' and commit the result."
+              exit 1
+            fi
+            echo "Agent sync check PASSED — .claude/agents/ matches expected set."
+          else
+            echo "sync-agents.sh --dry-run did not write /tmp/sync-expected.txt."
+            echo "Ensure the --dry-run flag is implemented in scripts/sync-agents.sh."
+            exit 1
+          fi

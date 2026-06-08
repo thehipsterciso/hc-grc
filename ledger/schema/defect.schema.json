@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hc-grc/ledger/schema/defect.schema.json",
+  "title": "Ledger Defect Record",
+  "description": "Schema for a defect/rejection record written by error-coordinator to ledger/defects/. A defect record is created each time a Tier-2 adversary issues a REJECT verdict. The defect record is the authoritative log of what was wrong; the artifact's revision_history references it. Defect records are never deleted — they form the permanent provenance audit trail.",
+  "type": "object",
+  "required": [
+    "defect_id",
+    "artifact_id",
+    "certificate_id",
+    "stage_id",
+    "adversary",
+    "defects",
+    "round",
+    "timestamp"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "defect_id": {
+      "type": "string",
+      "description": "Unique identifier for this defect record. Convention: defect.<artifact_id>.r<round> (dots as separators, matching LEDGER.md). Must equal the filename stem of this file under ledger/defects/.",
+      "minLength": 1
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "The artifact_id of the artifact that was rejected. Must match a registry artifact's artifact_id.",
+      "minLength": 1
+    },
+    "certificate_id": {
+      "type": ["string", "null"],
+      "description": "The certificate_id of the rejection-round certificate this defect record corresponds to. Null if no separate certificate record was issued for the rejection (i.e. defect is authoritative on its own).",
+      "minLength": 1
+    },
+    "stage_id": {
+      "type": "string",
+      "description": "Stage the rejected artifact belongs to.",
+      "enum": [
+        "P0",
+        "P1",
+        "S1f",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "S8f",
+        "S9",
+        "X1",
+        "X2",
+        "X3",
+        "X4",
+        "X5"
+      ]
+    },
+    "adversary": {
+      "type": "object",
+      "description": "The adversary agent that issued this rejection.",
+      "required": ["agent", "model", "stance"],
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string",
+          "description": "Adversary agent discipline identifier (e.g. data-scientist-adversary).",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "description": "Model used by the adversary when issuing this rejection.",
+          "minLength": 1
+        },
+        "stance": {
+          "type": "string",
+          "description": "Review stance active during this rejection round.",
+          "minLength": 1
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "description": "Ordered list of specific, actionable defects found by the adversary. Each entry is an object with category, description, and severity. Vague descriptions ('needs improvement') are not acceptable — each must be specific enough for the producer to know exactly what to revise.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["category", "description", "severity"],
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Defect category (e.g. 'missing-field', 'schema-violation', 'methodology', 'completeness', 'quality', 'reproducibility', 'provenance').",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Specific, actionable description of the defect. Must be precise enough for the producer to know exactly what to fix.",
+            "minLength": 10
+          },
+          "severity": {
+            "type": "string",
+            "description": "Defect severity. 'critical': blocks acceptance outright; must be resolved. 'high': significant quality/completeness gap; must be resolved. 'medium': notable issue; should be resolved before acceptance. 'low': minor issue; may be resolved or acknowledged.",
+            "enum": ["critical", "high", "medium", "low"]
+          }
+        }
+      }
+    },
+    "resolution_ref": {
+      "type": ["string", "null"],
+      "description": "Path or reference to the revised artifact, populated once the producer submits a revision. Null until resolution is submitted.",
+      "minLength": 1
+    },
+    "round": {
+      "type": "integer",
+      "description": "The review round number in which this rejection was issued. Round 1 is the first adversary review of the artifact. If round equals the stage's max_rounds (default 3), a deadlock arbiter must be invoked.",
+      "minimum": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp when this rejection was issued.",
+      "format": "date-time"
+    },
+    "completeness_verdict": {
+      "type": "string",
+      "description": "Adversary's completeness assessment at time of rejection.",
+      "enum": ["COMPLETE", "INCOMPLETE", "PARTIAL"]
+    },
+    "quality_verdict": {
+      "type": "string",
+      "description": "Adversary's quality assessment at time of rejection.",
+      "enum": ["ACCEPTABLE", "UNACCEPTABLE", "CONDITIONAL"]
+    },
+    "prior_defect_refs": {
+      "type": "array",
+      "description": "Defect record IDs from prior rounds on this same artifact. Enables tracking whether previously-identified defects were resolved.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "resolution_required_by": {
+      "type": "string",
+      "description": "Optional ISO-8601 UTC deadline for the producer to submit a revision.",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional additional context from the adversary (e.g. why a prior fix was insufficient, pointers to reference material)."
+    }
+  }
+}

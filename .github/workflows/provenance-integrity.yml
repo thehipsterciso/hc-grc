@@ -1,0 +1,159 @@
+name: provenance-integrity
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install jsonschema
+        run: pip install jsonschema==4.22.0
+
+      - name: Find changed registry files
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="HEAD"
+            fi
+          fi
+          git diff --name-only "$BASE" HEAD -- 'registry/**/*.json' 2>/dev/null \
+            > /tmp/changed_registry.txt || true
+          if [ ! -s /tmp/changed_registry.txt ]; then
+            find registry -name '*.json' 2>/dev/null > /tmp/changed_registry.txt || true
+          fi
+
+      - name: Check provenance fields
+        run: |
+          python - <<'PYEOF'
+          import json
+          import sys
+          import pathlib
+          import re
+
+          # Tier-A stages — cross-framework depends_on not allowed before Tier B (X1-X5)
+          TIER_A_STAGES = {"p0", "p1", "s1f", "s3", "s4", "s5", "s6", "s7", "s8f", "s9"}
+          TIER_B_STAGES = {"x1", "x2", "x3", "x4", "x5"}
+          FRAMEWORK_NAMES = {"scf", "nist-800-53", "nist-csf-2.0", "nist-800-171", "cis-v8"}
+
+          def framework_of(artifact_id: str) -> str | None:
+              """Extract framework from artifact_id convention: framework/stage/name."""
+              parts = artifact_id.split("/")
+              if parts[0] in FRAMEWORK_NAMES:
+                  return parts[0]
+              return None
+
+          def stage_of(artifact_id: str) -> str | None:
+              parts = artifact_id.split("/")
+              if len(parts) >= 2:
+                  # Second segment is stage
+                  return parts[1].lower()
+              return None
+
+          changed_file = pathlib.Path("/tmp/changed_registry.txt")
+          files = [l.strip() for l in changed_file.read_text().splitlines() if l.strip()]
+
+          # Build a set of all registered artifact_ids for depends_on checking
+          all_ids: set[str] = set()
+          registry_root = pathlib.Path("registry")
+          if registry_root.exists():
+              for jf in registry_root.rglob("*.json"):
+                  if "schema" in str(jf) or "ledger" in str(jf):
+                      continue
+                  try:
+                      with jf.open() as f:
+                          d = json.load(f)
+                      if "artifact_id" in d:
+                          all_ids.add(d["artifact_id"])
+                  except Exception:
+                      pass
+
+          errors: list[str] = []
+
+          for fpath_str in files:
+              fpath = pathlib.Path(fpath_str)
+              if not fpath.exists():
+                  continue
+              if "schema" in str(fpath) or "ledger" in str(fpath):
+                  continue
+              try:
+                  with fpath.open() as f:
+                      artifact = json.load(f)
+              except json.JSONDecodeError:
+                  continue  # caught by registry-validate
+
+              artifact_id = artifact.get("artifact_id", str(fpath))
+
+              # producer.model required
+              producer = artifact.get("producer", {})
+              if not producer.get("model"):
+                  errors.append(f"{artifact_id}: producer.model is missing or empty")
+
+              # adversary checks:
+              # P0 self-attestation exception: when adversary is a dict with self_attested=true,
+              # skip adversary checks. This covers P0 bootstrap artifacts that cannot yet have
+              # an adversary (the adversary harness is what P0 is building). The schema defines
+              # P0 self-attestation as adversary: {"self_attested": true, "reason": "..."} —
+              # NOT as adversary: null + top-level self_attested. All other artifacts require
+              # adversary.model and adversary.family to be non-empty strings.
+              adversary = artifact.get("adversary")
+
+              if isinstance(adversary, dict) and adversary.get("self_attested") is True:
+                  # P0 exception: self-attested artifact, no adversary review required
+                  pass
+              else:
+                  adv = adversary if isinstance(adversary, dict) else {}
+                  if not adv.get("model"):
+                      errors.append(f"{artifact_id}: adversary.model is missing or empty")
+                  # adversary.family required (honest declaration, even if same as producer)
+                  if not adv.get("family"):
+                      errors.append(f"{artifact_id}: adversary.family is missing or empty")
+
+              # git_commit required
+              if not artifact.get("git_commit"):
+                  errors.append(f"{artifact_id}: git_commit field is missing or empty")
+
+              # depends_on: all referenced artifact_ids must be registered
+              depends_on = artifact.get("depends_on", [])
+              for dep_id in depends_on:
+                  if dep_id not in all_ids:
+                      errors.append(
+                          f"{artifact_id}: depends_on references unregistered artifact_id '{dep_id}'"
+                      )
+
+              # Cross-framework dependency check: only allowed in Tier B (X1-X5)
+              this_stage = stage_of(artifact_id)
+              this_framework = framework_of(artifact_id)
+              if this_stage and this_stage in TIER_A_STAGES and this_framework:
+                  for dep_id in depends_on:
+                      dep_framework = framework_of(dep_id)
+                      if dep_framework and dep_framework != this_framework:
+                          errors.append(
+                              f"{artifact_id}: cross-framework dependency on '{dep_id}' "
+                              f"(framework '{dep_framework}') is not allowed before Tier B. "
+                              f"Stage '{this_stage}' is Tier A."
+                          )
+
+          if errors:
+              print("\nProvenance integrity FAILED:\n")
+              for e in errors:
+                  print(f"  ERROR: {e}")
+              sys.exit(1)
+          else:
+              print(f"Checked {len(files)} registry file(s) — provenance OK.")
+          PYEOF

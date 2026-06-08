@@ -1,0 +1,74 @@
+name: certificate-completeness
+
+on:
+  # Stage/framework/synthesis branches: validate the specific stage being merged
+  pull_request:
+    branches:
+      - "stage/*"
+      - "scf/*"
+      - "nist-800-53/*"
+      - "nist-csf-2.0/*"
+      - "nist-800-171/*"
+      - "cis-v8/*"
+      - "synthesis/*"
+  # Main branch: validate ALL registered artifacts across ALL stages before final merge
+  pull_request_target:
+    branches:
+      - main
+
+jobs:
+  stage-gate:
+    # Runs on PRs to stage/framework/synthesis branches
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+
+      - name: Derive stage from branch name
+        id: stage
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          # Extract the stage identifier from branch prefix
+          # e.g. stage/s7-nist-800-53 -> s7
+          # scf/s4-corpus -> s4
+          # synthesis/x3 -> x3
+          STAGE=$(echo "$BRANCH" | sed 's|.*/||' | sed 's/-.*//' | tr '[:upper:]' '[:lower:]')
+          echo "branch=$BRANCH"
+          echo "stage=$STAGE"
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Run stage gate
+        run: |
+          python scripts/stage_gate.py --stage "${{ steps.stage.outputs.stage }}"
+
+  validate-all-for-main:
+    # Runs on PRs to main: validate all registered artifacts across all stages
+    if: ${{ github.event_name == 'pull_request_target' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+
+      - name: Validate all stages (main merge gate)
+        run: |
+          echo "Validating ALL registered artifacts across ALL stages before merge to main..."
+          python scripts/stage_gate.py --validate-all

@@ -1,0 +1,89 @@
+# hc-grc — pre-commit hooks configuration
+#
+# Run before commits to validate code quality, detect secrets, and enforce invariants.
+# Install: `pip install pre-commit && pre-commit install`
+# Or via: `make hooks`
+
+repos:
+  # Ruff linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        exclude: ^upstream/
+        stages: [commit]
+
+  # Black formatting (100 cols)
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: [--line-length=100]
+        exclude: ^upstream/
+        stages: [commit]
+
+  # JSON validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-json
+        exclude: ^upstream/
+        stages: [commit]
+
+  # Credential detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: ^upstream/
+        stages: [commit]
+
+  # Custom local hooks
+
+  # Block data files (enforce gitignored artifacts invariant)
+  - repo: local
+    hooks:
+      - id: no-data-in-git
+        name: No data files in git
+        entry: bash -c 'git diff --cached --name-only | grep -E "(^data/|\.parquet$|^embeddings/|\.h5$|\.pkl$)" && exit 1; exit 0'
+        language: system
+        stages: [commit]
+
+  # Block hand-edited agent files (enforce generated-file invariant)
+  - repo: local
+    hooks:
+      - id: no-hand-edit-agents
+        name: No hand-edits to generated agent files
+        entry: bash scripts/hooks/check-agents-generated.sh
+        language: system
+        stages: [commit]
+
+  # Validate registry/ledger JSON against schema
+  - repo: local
+    hooks:
+      - id: registry-schema-local
+        name: Validate registry/ledger schema
+        entry: python scripts/hooks/validate-registry-schema.py
+        language: system
+        stages: [commit]
+
+  # Validate branch name on push
+  - repo: local
+    hooks:
+      - id: check-branch-name
+        name: Validate branch name format
+        entry: bash scripts/hooks/check-branch-name.sh
+        language: system
+        stages: [push]
+
+  # Prevent cross-framework commits on push
+  - repo: local
+    hooks:
+      - id: no-cross-framework-commits
+        name: No cross-framework commits in stage branches
+        entry: bash scripts/hooks/check-cross-framework-commits.sh
+        language: system
+        stages: [push]

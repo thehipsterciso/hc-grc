@@ -1,0 +1,44 @@
+name: repro-smoke
+
+on:
+  pull_request:
+    branches:
+      - main
+      - "stage/*"
+      - "scf/*"
+      - "nist-800-53/*"
+      - "nist-csf-2.0/*"
+      - "nist-800-171/*"
+      - "cis-v8/*"
+  schedule:
+    - cron: "0 2 * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build reproducibility container
+        run: docker build -t hc-grc-repro repro/
+
+      - name: Smoke test — trivial deterministic task
+        run: |
+          docker run --rm hc-grc-repro bash repro/smoke/run_trivial.sh > /tmp/trivial_output.txt
+          EXPECTED=$(cat repro/smoke/expected_output.sha256 | awk '{print $1}')
+          ACTUAL=$(sha256sum /tmp/trivial_output.txt | awk '{print $1}')
+          echo "Expected: $EXPECTED"
+          echo "Actual:   $ACTUAL"
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "ERROR: Trivial task output does not match expected SHA-256."
+            echo "The reproducibility container is not producing byte-identical output."
+            exit 1
+          fi
+          echo "Trivial smoke test PASSED — output is byte-identical."
+
+      - name: Smoke test — bad artifact is rejected
+        # run_bad_artifact.sh exits 0 iff stage_gate.py genuinely rejected the artifact
+        # (nonzero exit AND "ARTIFACT VALIDATION FAILED" in output). Any other outcome
+        # (crash, false acceptance) exits nonzero with a distinct HARNESS ERROR / FAIL
+        # message. No inversion needed here — trust the script's exit code directly.
+        run: docker run --rm hc-grc-repro bash repro/smoke/run_bad_artifact.sh
