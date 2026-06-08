@@ -1,0 +1,42 @@
+{
+  "certificate_id": "P1.preregistration-draft.r1",
+  "host": "hc-macbook-pro.local",
+  "artifact_set": "P1 pre-registration rewrite",
+  "stage_id": "P1",
+  "framework": "_program",
+  "producer": {
+    "agent": "data-scientist/claude-sonnet-4-6@hc-macbook-pro.local",
+    "model": "claude-sonnet-4-6"
+  },
+  "adversary": {
+    "agent": "data-scientist-adversary/claude-opus-4-8@hc-macbook-pro.local",
+    "model": "claude-opus-4-8",
+    "family": "anthropic",
+    "stance": "falsification-probe"
+  },
+  "verdict": "PASS",
+  "rounds": 1,
+  "date": "2026-06-08",
+  "files_certified": [
+    "docs/PREREGISTRATION.md"
+  ],
+  "transcript_refs": [
+    "transcripts/P1/_program/data-scientist-preregistration-2026-06-08.md",
+    "transcripts/P1/_program/data-scientist-adversary-preregistration-r1-2026-06-08.md"
+  ],
+  "status": "DRAFT — awaiting T1 freeze after S3 informs deferred thresholds",
+  "defects_addressed": ["D1","D2","D3","D4","D5","D6","D7","D8","D9","D10","D11","D12","D13","D14","D15","D16"],
+  "residual_limitations": [
+    "CKA named in S6 instrument layer — recommend abstracting; non-blocking",
+    "L1 SCF sensitivity analysis substrate deferred to X1 design time — flag for X1 adversary",
+    "No S3 evidence yet to confirm deferred thresholds are settable as planned",
+    "Layer-3: different tier, same Anthropic family"
+  ],
+  "t1_checklist": {
+    "adversary_certified": true,
+    "thresholds_deferred": true,
+    "s3_informed_thresholds": false,
+    "human_signature": null,
+    "sha256": null
+  }
+}

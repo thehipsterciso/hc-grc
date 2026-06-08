@@ -1,0 +1,33 @@
+{
+  "certificate_id": "P0.arbiter-definition.r2",
+  "host": "hc-macbook-pro.local",
+  "artifact_set": "Arbiter agent definition",
+  "stage_id": "P0",
+  "framework": "_program",
+  "producer": {
+    "agent": "documentation-engineer/claude-sonnet-4-6@hc-macbook-pro.local",
+    "model": "claude-sonnet-4-6"
+  },
+  "adversary": {
+    "agent": "documentation-engineer-adversary/claude-opus-4-8@hc-macbook-pro.local",
+    "model": "claude-opus-4-8",
+    "family": "anthropic",
+    "stance": "assumption-ledger"
+  },
+  "verdict": "PASS",
+  "rounds": 2,
+  "date": "2026-06-08",
+  "files_certified": [
+    "agents/adversarial-review/arbiter.md"
+  ],
+  "transcript_refs": [
+    "transcripts/P0/_program/documentation-engineer-arbiter-2026-06-08.md",
+    "transcripts/P0/_program/documentation-engineer-adversary-arbiter-r1-2026-06-08.md",
+    "transcripts/P0/_program/documentation-engineer-adversary-arbiter-r2-2026-06-08.md"
+  ],
+  "round_1_rejection_summary": "Arbiter scoped hard-constraint REJECT to five constraints instead of all nine in CLAUDE.md; stale Rule 0 cross-reference for identity format; DEADLOCK_SUMMARY keyed by round instead of defect",
+  "residual_limitations": [
+    "CLAUDE.md line-range citation and nine-name list must be updated in lockstep if hard-constraint numbering changes",
+    "Layer-3: different tier, same Anthropic family"
+  ]
+}
