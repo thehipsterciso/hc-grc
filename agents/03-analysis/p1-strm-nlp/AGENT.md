@@ -71,6 +71,7 @@ Runs after Embedding Agent completes and Gate 2 is confirmed. Exploratory phase 
 **Human gate**: Gate 3 — human reviews exploratory similarity distribution and disagreement register before confirmatory analysis begins
 
 ## Behavioral Constraints
+- **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
 - All exploratory scripts prefixed EXP_ and labeled exploratory in header — no p-value decision language.
 - All confirmatory scripts have SAP header with hypothesis ID, test name, and pre-specified effect size threshold.

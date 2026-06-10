@@ -73,6 +73,7 @@ Depends on P2 topology (which identifies low-connectivity domains) and P3 conver
 **Human gate**: Gate 3 — human reviews blindspot register. Critical blindspots (risk categories with zero coverage in a major framework combination) are surfaced explicitly.
 
 ## Behavioral Constraints
+- **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
 - P3 false convergence flags must be applied before computing coverage — controls flagged as terminologically similar do not count as independent coverage.
 - NIST cluster constraint: NIST 800-53, CSF, and 800-171 count as one framework source for coverage purposes.

@@ -77,6 +77,7 @@ All agent outputs → [Agent Evolution] → Performance metrics → MLflow
 - Never trigger fine-tuning based on fewer than 20 agent runs — insufficient sample for reliable signal.
 - Never suppress a performance degradation finding — all detected regressions surface to the human dashboard even if an automatic fix is applied.
 - Never modify the Orchestrator's gate enforcement logic — that is a human-only change.
+- Never autonomously modify the prompts of protected research agents. The following seven agents require Escalation approval before any prompt modification takes effect: p1-strm-nlp, p2-domain-clustering, p3-coverage-diffusion, p4-gap-analysis, p5-risk-quantification, statistical-analyst, hypothesis-formalizer. Modifying these agents mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 - Never promote a prompt variant that has not been evaluated against at least one held-out example set.
 
 ## Failure Modes & Recovery

@@ -2,6 +2,45 @@
 
 **Status:** Locked — gate topology is fixed at pre-registration.
 
+---
+
+## Phase 0 Prerequisites — Structural Firewall Preconditions
+
+All structural integrity claims in the project documentation are conditional on Phase 0 implementation completing before any data acquisition. The following must be verified before SCF data enters the system (per ADR-0015, #71):
+
+- [ ] LangGraph skeleton running with all five gate nodes present
+- [ ] Gate 1 fires with synthetic payload and produces a valid gate record
+- [ ] PostgresSaver checkpointing confirmed on Mac Mini compute node
+- [ ] `compute_data_split()` idempotency test passes: two runs with identical state produce bit-identical output (seed derived from SHA-256 of data manifest hash — see #75)
+- [ ] Hardware benchmark complete: PostgresSaver write throughput characterized, `batch_size` locked (see #76)
+- [ ] Governance dry-run complete: all five components passing (see #93)
+
+**No SCF data may be acquired until all items above are checked.**
+
+---
+
+## Protected Agent Set — Agent Evolution Constraint
+
+The following agents' prompts may not be modified by Agent Evolution autonomously. Any modification requires Escalation approval before taking effect (per ADR-0015, #77):
+
+| Agent | Role |
+|-------|------|
+| p1-strm-nlp | NLP similarity measurement |
+| p2-domain-clustering | Clustering methodology |
+| p3-coverage-diffusion | Semantic coverage measurement |
+| p4-gap-analysis | Gap analysis methodology |
+| p5-risk-quantification | Risk quantification approach |
+| statistical-analyst | Evidence weighting and testing |
+| hypothesis-formalizer | Hypothesis structure for testing |
+
+Agent Evolution retains full autonomous scope over all non-protected agents.
+
+---
+
+## Gate Coordinator Node
+
+All `gate_status` and `gate_decisions` writes are routed exclusively through a single serialized gate coordinator node. No agent writes directly to these keys. Enforced by LangGraph edge definitions (per ADR-0015, #74).
+
 HC-GRC enforces five human approval gates implemented as LangGraph `interrupt()` calls in the Orchestrator node. Gates are not advisory — they are structural. The pipeline cannot advance past a gate without an explicit human decision recorded in the run manifest and the pre-registration ledger.
 
 ---

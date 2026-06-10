@@ -72,6 +72,7 @@ Runs after P2 community structure is available. Depends on P2's cross-framework 
 **Human gate**: Gate 3 — human reviews convergence atlas before confirmatory analysis. False convergence flags with > 5% prevalence are Gate 3 discussion items.
 
 ## Behavioral Constraints
+- **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
 - NIST Cluster Independence Constraint is mandatory: NIST 800-53, CSF, and 800-171 are treated as one authorship cluster — convergence between them does not constitute independent validation.
 - Convergence scores are relative to SCF's STRM mappings — they reflect the framework as SCF models it, not as the authoritative framework document defines it.

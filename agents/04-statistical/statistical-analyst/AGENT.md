@@ -72,6 +72,7 @@ Human Gate 4: Results review
 **Human gate**: Gate 4 — human reviews the complete results table before Report Agent begins. Unexpected results (large effect sizes in unexpected direction, all nulls across a module) are Gate 4 discussion items.
 
 ## Behavioral Constraints
+- **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
 - Test split is accessed exactly once — no exploratory queries, no "just checking" lookups before the official run.
 - Only SAP-registered hypotheses are tested — no opportunistic tests on interesting patterns observed in EDA.

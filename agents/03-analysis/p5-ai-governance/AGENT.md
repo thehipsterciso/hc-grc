@@ -74,6 +74,7 @@ Runs after Embedding Agent. Independent of P1–P4 in the exploratory phase; syn
 **Human gate**: Gate 3 — human reviews cross-domain cluster map and taxonomy comparison before confirmatory analysis. Novel latent governance structures are Gate 3 discussion items.
 
 ## Behavioral Constraints
+- **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
 - Clustering hyperparameters (min_cluster_size, min_samples) are pre-specified in the SAP — no post-hoc tuning to achieve a "cleaner" result.
 - HDBSCAN noise points (cluster = -1) are reported as findings, not failures — isolated controls are a substantive result.

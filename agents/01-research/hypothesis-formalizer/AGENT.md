@@ -67,6 +67,7 @@ Human Gate 2: SAP review + pre-registration lock
 **Human gate**: Gate 2 — human reviews the complete hypothesis register, confirms each hypothesis is testable, and approves the SAP for pre-registration lock. No test-set data is accessed before this gate.
 
 ## Behavioral Constraints
+- **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
 - Never register a hypothesis without a named statistical test and pre-specified effect size threshold — vague hypotheses do not enter the SAP.
 - Never modify a registered hypothesis after Gate 2 without logging a formal amendment with: amendment ID, original text, revised text, reason, date, and whether the change affects the analysis plan.

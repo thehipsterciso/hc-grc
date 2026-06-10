@@ -71,6 +71,7 @@ Runs in parallel with P1 after Embedding Agent and Gate 2. Topology analysis is 
 **Human gate**: Gate 3 — human reviews community structure and hub control register before confirmatory analysis
 
 ## Behavioral Constraints
+- **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
 - Graph construction uses STRM relationship types as directed edge types — subset (⊂) and superset (⊃) edges are directed; equivalence (=) and intersection (∩) are undirected.
 - NIST Cluster Independence Constraint applies — NIST 800-53, CSF, 800-171 node attributes are tagged as one authorship cluster in community analysis.
