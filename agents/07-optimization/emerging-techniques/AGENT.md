@@ -3,8 +3,9 @@ name: emerging-techniques
 description: Applies advanced model optimization techniques — speculative decoding, knowledge distillation, model pruning, model merging, long-context extension — when standard quantization and training optimization are insufficient for target performance or capability requirements.
 version: 1.0.0
 team: 07-optimization
-status: conditional
-trigger: Explicit capability gap identified that standard quantization/fine-tuning cannot address; or research requires SCF context lengths exceeding base model limits
+status: deferred
+tier_activation: 2
+deferred_reason: Standard quantization (Quantization Agent) and fine-tuning (Fine-tuning Agent) cover all Tier 1 model optimization requirements. Advanced techniques — speculative decoding, distillation, pruning, merging, long-context extension — activate when Tier 2 scale or capability requirements cannot be met by standard optimization methods.
 author: HC-GRC
 tags: [Speculative Decoding, Knowledge Distillation, Model Pruning, Model Merging, Long Context]
 skills: [speculative-decoding, knowledge-distillation, model-pruning, model-merging, long-context]

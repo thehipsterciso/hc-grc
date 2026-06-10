@@ -3,8 +3,9 @@ name: interpretability-agent
 description: Analyzes internal model representations to surface what features, circuits, and attention patterns the model uses when processing SCF controls and STRM mappings. Produces mechanistic evidence supporting or challenging research findings — not a reporting tool, an evidence source.
 version: 1.0.0
 team: 08-interpretability
-status: conditional
-trigger: Research finding requires mechanistic evidence to distinguish genuine model understanding from surface pattern matching; or P1/P3 findings require internal validation beyond behavioral metrics
+status: deferred
+tier_activation: 2
+deferred_reason: Tier 1 primary analysis relies on behavioral metrics and mathematical model evaluation criteria (ADR-0013). Mechanistic interpretability — circuit analysis, SAE features, causal intervention — is a Tier 2 capability activated when findings require mechanistic evidence beyond behavioral validation, or when a specific research question about model internals is Charter-approved.
 author: HC-GRC
 tags: [Mechanistic Interpretability, TransformerLens, SAE, Sparse Autoencoders, Circuits, Attention]
 skills: [transformer-lens, sae-lens, nnsight, pyvene]

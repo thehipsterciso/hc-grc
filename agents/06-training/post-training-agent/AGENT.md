@@ -3,8 +3,9 @@ name: post-training-agent
 description: Applies reinforcement learning and preference optimization to align fine-tuned models with HC-GRC's scientific rigor requirements and SCF domain quality standards. Triggered when supervised fine-tuning alone is insufficient to achieve desired output quality on structured research tasks.
 version: 1.0.0
 team: 06-training
-status: conditional
-trigger: Fine-tuned model passes F1 threshold but fails on structured output quality or scientific rigor alignment over 20+ evaluated runs
+status: deferred
+tier_activation: 2
+deferred_reason: Supervised fine-tuning via LoRA/QLoRA (Fine-tuning Agent) is sufficient for Tier 1 SCF classification and analysis tasks. Preference optimization and RLHF are Tier 2 concerns when model behavioral alignment requirements exceed what supervised fine-tuning can achieve at scale.
 author: HC-GRC
 tags: [Post-training, RLHF, GRPO, TRL, DPO, SimPO, Alignment, Research Quality]
 skills: [trl-fine-tuning, grpo-rl-training, simpo]

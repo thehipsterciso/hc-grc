@@ -3,8 +3,9 @@ name: distributed-training
 description: Manages distributed training infrastructure when fine-tuning or post-training runs exceed single-device capacity. Coordinates multi-GPU or multi-node training via Accelerate, PyTorch Lightning, or Ray Train depending on hardware configuration.
 version: 1.0.0
 team: 05-inference
-status: conditional
-trigger: Fine-tuning or post-training job requires > single GPU or single machine
+status: deferred
+tier_activation: 2
+deferred_reason: Dedicated single compute node (Apple Silicon) is sufficient for all Tier 1 fine-tuning workloads. Multi-device distributed training is not required until Tier 2 data volumes or model scales exceed single-node capacity.
 author: HC-GRC
 tags: [Distributed Training, Accelerate, PyTorch Lightning, Ray Train, Multi-GPU]
 skills: [accelerate, pytorch-lightning, ray-train]

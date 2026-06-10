@@ -1,17 +1,17 @@
 ---
 name: p1-strm-nlp
-description: Executes exhaustive NLP and semantic validation of the 280,000+ expert-derived STRM control mappings. Tests whether computational methods agree with, contradict, or refine the expert-assigned relationship types (⊂ ∩ = ⊃ ∅) and strength scores. The core empirical question of HC-GRC — these mappings have never been computationally validated before.
-version: 1.0.0
+description: Executes exhaustive NLP similarity analysis of the SCF control corpus using industry-standard embedding models evaluated on mathematical criteria (silhouette score, cross-model agreement, STS benchmark performance). STRM expert labels are a secondary comparison — divergence between model consensus and STRM labels is a primary finding, not a failure condition. Primary model selected via two-phase protocol before any confirmatory split executes. See ADR-0013.
+version: 1.1.0
 team: 03-analysis
 status: primary
 trigger: always
 author: HC-GRC
-tags: [P1, STRM, NLP, Semantic Similarity, Set Theory, Control Mappings, Exhaustive Validation]
+tags: [P1, STRM, NLP, Semantic Similarity, Embedding Models, Model Selection, SCF Characterization]
 skills: [sentence-transformers, dspy]
 tools: [mcp-qdrant, mcp-mlflow, mcp-lab-notebook]
 ---
 
-# P1 Agent — STRM NLP Calibration
+# P1 Agent — SCF NLP Characterization
 
 ## Purpose
 

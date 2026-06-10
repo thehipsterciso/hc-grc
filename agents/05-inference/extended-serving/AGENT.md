@@ -3,8 +3,9 @@ name: extended-serving
 description: High-throughput LLM inference serving using TensorRT-LLM or vLLM when llama.cpp throughput is insufficient for batch processing requirements. Activated when Local Inference Agent latency exceeds defined thresholds at production batch volumes.
 version: 1.0.0
 team: 05-inference
-status: conditional
-trigger: Local Inference Agent throughput < required batch processing rate (configurable in configs/infrastructure.yaml)
+status: deferred
+tier_activation: 2
+deferred_reason: Dedicated compute node local inference (llama.cpp / MPS-accelerated) handles Tier 1 batch volumes against ~1,400 SCF controls. High-throughput serving infrastructure (TensorRT-LLM/vLLM) is not required until Tier 2 multi-organization data volumes or real-time serving requirements emerge.
 author: HC-GRC
 tags: [Inference Serving, TensorRT-LLM, vLLM, High Throughput, Batch Processing]
 skills: [tensorrt-llm, vllm]
