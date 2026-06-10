@@ -485,6 +485,21 @@ Follow the same two-condition model as Tier 1, adapted to their scope:
 - Fully characterized data space for that tier's domain
 - At least one published finding from that tier
 
+### Single-Operator Independence Model
+
+This is a single-operator program. Thomas Jones is the researcher, operator, and Charter approver. There is no independent co-reviewer.
+
+Independence from researcher bias is achieved through structural transparency, not co-reviewer availability. This was an explicit design decision (see issue #89) — evaluated alternatives included OSF pre-registration and an independent Gate 2 co-reviewer; both were declined as incompatible with the autonomous iterative model.
+
+The independence mechanisms are:
+
+- **Code gates** — Gate 2 is deterministic code that cannot be bypassed. The platform cannot enter confirmatory analysis without an approval event being cryptographically logged.
+- **Append-only provenance** — the W3C PROV-DM audit trail records every platform action before the next step executes. No step can be retroactively removed.
+- **Timestamped pre-registration** — every hypothesis the platform pursues is logged to the Preregistration Ledger with an RFC 3161 timestamp before confirmatory testing begins.
+- **Complete reproducibility package** — all data, code, configurations, and logs are published with findings so any reviewer can reconstruct the full decision history.
+
+This is documented as a deliberate methodological position, not an oversight. The manuscript will state it explicitly.
+
 ---
 
 ## 9. Open Questions (To Be Resolved Before Build Begins)
