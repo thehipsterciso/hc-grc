@@ -1,5 +1,7 @@
 # HC-GRC
 
+> **Not a technical reader?** Start with [OVERVIEW.md](OVERVIEW.md) — a plain language guide to what this project is, why it matters, and how it works.
+
 **Autonomous scientific research platform for empirical analysis of cybersecurity control frameworks — starting with the Secure Controls Framework (SCF).**
 
 The SCF is a metaframework of 1,400+ security controls mapped to 33 domains via ~280,000 expert-derived Set Theory Relationship Mappings (STRM). These mappings — which define how controls across frameworks relate to one another (subset, intersection, equivalence, superset, disjoint) — have never been empirically validated. This platform does that. And it doesn't stop there.
