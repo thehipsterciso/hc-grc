@@ -253,7 +253,7 @@ The SCF serves a role no other single framework plays: it is the **alignment sub
 
 For the hc-grc program, this means the SCF is both:
 1. **A subject of study** — its own structural properties, domain organization, and control-to-risk mappings are characterized as a corpus
-2. **The alignment layer** — the SCF crosswalk is what makes cross-framework comparison in Tier B possible; it provides the common substrate onto which NIST 800-53, CIS Controls, and others are mapped for structural comparison
+2. **The alignment layer** — the SCF crosswalk is what makes cross-framework comparison in Tier 2 possible; it provides the common substrate onto which NIST 800-53, CIS Controls, and others are mapped for structural comparison
 
 The SCF's STRM claims (subset/intersect/superset relationships) are precisely the structural assertions that empirical analysis can test — whether the claimed coverage relationships hold in the actual control text, and where they diverge from what STRM asserts.
 

@@ -50,9 +50,9 @@ The Charter is the reference point for drift detection. It is version-controlled
 
 ---
 
-## Two-Tier Autonomy Model
+## Autonomy Model — Autonomous vs. Escalation
 
-### Tier A — Autonomous Proceed
+### Autonomous — Platform Proceeds
 
 The platform proceeds without human approval when a proposed new direction is **tangential** to the current Charter:
 
@@ -64,9 +64,9 @@ The platform proceeds without human approval when a proposed new direction is **
 
 **Operational definition:** A direction is tangential if it does not require a Charter amendment — no new domains, no new methodology classes, no new data sources, no tier change.
 
-All Tier A actions are logged with full provenance. Thomas can review the log at any time; the platform does not wait for review before proceeding.
+All Autonomous actions are logged with full provenance. Thomas can review the log at any time; the platform does not wait for review before proceeding.
 
-### Tier B — Human Approval Required
+### Escalation — Operator Approval Required
 
 The platform parks the proposed direction and notifies Thomas when it would require a **Charter amendment**:
 
@@ -78,7 +78,7 @@ The platform parks the proposed direction and notifies Thomas when it would requ
 
 **Notification format:** The platform generates a structured proposal containing: proposed Charter amendment, rationale from findings, estimated scope and compute impact, recommended approval/rejection, and the finding that triggered it. Thomas responds with approve/reject/defer.
 
-**Non-negotiable:** Tier B never auto-escalates. The platform waits indefinitely for a Tier B decision. It continues all Tier A work in parallel. Thomas does not slow down innovation — he gates scope expansion, not execution within approved scope.
+**Non-negotiable:** Escalation never auto-approves. The platform waits indefinitely for an Escalation decision. It continues all Autonomous work in parallel. Thomas does not slow down innovation — he gates scope expansion, not execution within approved scope.
 
 ---
 
@@ -97,7 +97,7 @@ The current linear topology (phases 0→5, terminate) is replaced with a cyclic 
 │         ↓                                           │
 │   Drift Detection                                   │
 │    ↙          ↘                                     │
-│ Tier A        Tier B                                │
+│ Autonomous   Escalation                                │
 │ (proceed)     (park + notify Thomas)                │
 │    ↓                                                │
 │ Confirmatory Analysis                               │
@@ -118,7 +118,7 @@ The graph does not terminate after one pass. Each completed analysis cycle evalu
 Publication cadence is platform-determined, not pre-specified. The platform:
 
 1. Researches optimal publication cadence for empirical GRC/NLP work (venues, timing, preprint vs. peer review norms)
-2. Proposes a publication roadmap as a Charter amendment (Tier B — Thomas approves)
+2. Proposes a publication roadmap as a Charter amendment (Escalation — Thomas approves)
 3. Once approved, evaluates publication readiness after each completed confirmatory cycle
 4. Triggers manuscript preparation when readiness criteria are met
 
@@ -157,7 +157,7 @@ This provides stronger transparency guarantees than traditional pre-registration
 - Feedback edges in the LangGraph topology (cycles, not just DAG)
 - Research Charter as a versioned, machine-readable artifact
 - Drift detection node that evaluates proposed directions against the Charter
-- Tier B notification and response workflow (Gate variant, not a research gate)
+- Escalation notification and response workflow (Gate variant, not a research gate)
 - Publication readiness evaluator node
 - Continuous literature monitoring to track novelty
 
@@ -167,7 +167,7 @@ This provides stronger transparency guarantees than traditional pre-registration
 - Partially addresses #61, #85: pre-registration and hypothesis selection bias — addressed by Registered Reports model above
 
 **What this does not close:**
-- #91: Tier escalation needs explicit go/no-go criteria (Tier B decision, but criteria still need defining)
+- #91: Tier escalation needs explicit go/no-go criteria (Escalation decision, but criteria still need defining)
 - #94: Tier 1 completion definition still needed (what triggers the platform to consider Tier 1 done?)
 - #89: Single-operator governance — Thomas is still the sole Charter approver
 

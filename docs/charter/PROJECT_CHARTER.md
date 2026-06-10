@@ -468,7 +468,7 @@ Tier 1 completion is **platform-proposed, Thomas-approved**: the platform genera
 
 Tier 2 executes when Tier 1 is complete — unconditionally. The quality of Tier 1 findings does not gate Tier 2. Cross-framework comparison is worth conducting regardless of whether Tier 1 findings are strong or null. Null results in Tier 1 are findings; they do not block Tier 2.
 
-If the Tier 1 platform generates cross-framework intelligence (questions comparing SCF to other frameworks), that is a **Charter violation** — the scope boundary is broken, not the findings. This triggers Tier B routing per ADR-0012: park the finding, notify Thomas, correct scope. Tier 2 does not begin early because interesting cross-framework questions emerge.
+If the Tier 1 platform generates cross-framework intelligence (questions comparing SCF to other frameworks), that is a **Charter violation** — the scope boundary is broken, not the findings. This triggers Escalation routing per ADR-0012: park the finding, notify Thomas, correct scope. Tier 2 does not begin early because interesting cross-framework questions emerge.
 
 **T2 → T3 is a prerequisites gate.**
 

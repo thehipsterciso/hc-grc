@@ -48,7 +48,7 @@ The SCF is unique among frameworks in the hc-grc program: it was explicitly desi
 
 **As a research subject**: The SCF's own structural properties — domain organization, control density, risk coverage, network topology — are characterized as a corpus alongside the other four frameworks.
 
-**As the alignment layer**: Because the SCF maps to NIST 800-53, NIST CSF, NIST 800-171, and CIS Controls (among 200+ others), it provides the common substrate for cross-framework comparison in Tier B. The crosswalk built from SCF's STRM mappings is what allows the program to ask: does finding X in 800-53 correspond to finding Y in CIS Controls, and what does the SCF's control space look like when both are projected onto it?
+**As the alignment layer**: Because the SCF maps to NIST 800-53, NIST CSF, NIST 800-171, and CIS Controls (among 200+ others), it provides the common substrate for cross-framework comparison in Tier 2. The crosswalk built from SCF's STRM mappings is what allows the program to ask: does finding X in 800-53 correspond to finding Y in CIS Controls, and what does the SCF's control space look like when both are projected onto it?
 
 **The circularity constraint (L1)**: SCF crosswalk evidence cannot establish "structural similarity" between the SCF and any other framework. That would be circular — the SCF defined the crosswalk, so agreement between SCF and any framework's STRM mapping is not independent evidence. It is a tautology. Any cross-framework claim that traces primarily to SCF-to-SCF crosswalk agreement is invalid.
 
@@ -144,13 +144,13 @@ A future expansion to paywalled frameworks (ISO 27001, PCI DSS full text) requir
 
 ---
 
-## 9. The Crosswalk's Role in Tier B Analysis
+## 9. The Crosswalk's Role in Tier 2 Analysis
 
-Tier B of the hc-grc program (cross-framework synthesis) depends on the SCF crosswalk as its alignment substrate. The mechanics:
+Tier 2 of the hc-grc program (cross-framework synthesis) depends on the SCF crosswalk as its alignment substrate. The mechanics:
 
 1. Each framework's controls are mapped to SCF controls via STRM relationships
 2. Controls that map to the same SCF control are placed in "alignment" for comparison
-3. Structural findings from each framework's Tier A study are compared at the SCF-aligned level
+3. Structural findings from each framework's Tier 1 study are compared at the SCF-aligned level
 4. Findings that hold across aligned controls from multiple frameworks are candidates for cross-framework claims
 
 **What this analysis can and cannot claim**:
