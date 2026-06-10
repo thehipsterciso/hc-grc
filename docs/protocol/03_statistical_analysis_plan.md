@@ -1,5 +1,12 @@
 # Statistical Analysis Plan (SAP)
 
+> **DEFERRAL NOTICE — 2026-06-10**
+> This document is a template. The SAP is finalized at Gate 2, after exploratory characterization of the SCF corpus. Fields marked `[To be populated]` are structurally deferred — populating them before exploratory analysis runs would constitute pre-specification of effect sizes without empirical foundation.
+>
+> **Locked now (framework pre-registration):** Analytical workflow, hypothesis format, correction methods, split strategy (GroupKFold on SCF control IDs per issue #60), unit of analysis (SCF control, ~1,400 effective observations per issue #67), and model selection criteria (Phase 1/2 protocol per ADR-0013).
+>
+> **Deferred to Gate 2:** Specific hypotheses, effect size thresholds, primary outcome measures, multiple comparison families.
+
 **Version**: [version]  
 **Date locked**: [date — this document is immutable after this date]  
 **Pre-registration record**: `protocol/registration/`  
@@ -101,19 +108,19 @@ Tests are grouped into families here before analysis begins. Grouping is not adj
 
 ## 7. Data Splits
 
-**Unit of analysis**: [What constitutes one observation]
+**Unit of analysis**: SCF control (~1,400 unique controls). Not mapping rows (280,000). All statistical tests assume independence at the control level. Mixed-effects modeling is required if mapping-level analysis is conducted.
 
-**Split strategy**: [Random / stratified / group-aware — with justification]
+**Split strategy**: GroupKFold on SCF control IDs. No SCF control text appears in both train and test partitions. The DataSplitAgent asserts `len(set(train_control_ids) ∩ test_control_ids) == 0` before writing partition assignments to provenance. This assertion is logged and is a required Gate 2 artifact.
 
-**Leakage analysis**: [Every way test set information could contaminate training, and whether it is controlled]
+**Leakage analysis**: Entity-level leakage (same control text in train and test via different mapping rows) is controlled by the GroupKFold strategy above. Temporal leakage: N/A — SCF corpus is a static snapshot. Feature leakage: [To be populated at Gate 2 — specific features identified after EDA].
 
-| Split | Purpose | Size | Stratified by | Touched when |
-|-------|---------|------|--------------|--------------|
-| Training | Model fitting | % | | |
-| Validation | Tuning and model selection | % | | |
-| Test | Final evaluation | % | Set aside now, touched once at end |
+| Split | Purpose | Size | Grouped by | Touched when |
+|-------|---------|------|-----------|--------------|
+| Training | Model fitting | ~70% | SCF control ID | Phase 1 only |
+| Validation | Tuning and model selection | ~15% | SCF control ID | Phase 1 only |
+| Test | Final confirmatory evaluation | ~15% | SCF control ID | Once, at Gate 2 confirmatory run |
 
-**Cross-validation**: [k-fold strategy, k=, stratified by]
+**Cross-validation**: GroupKFold, k=5, groups=scf_control_id, on training split only.
 
 ---
 
@@ -142,9 +149,19 @@ No model is reported as performing "well" unless it beats the simple baseline on
 
 ## 10. Model Selection Criteria
 
-Models are selected by [criterion — e.g., macro-F1 on validation set]. Ties broken by [e.g., interpretability, compute cost].
+Primary embedding model selection follows the two-phase protocol from ADR-0013. The selection criterion is fixed here and is not changed after any SCF data is examined.
 
-The selection criterion is fixed here. It is not changed after models are evaluated.
+**Phase 1 — Benchmark evaluation (no SCF data):**
+Candidate models evaluated on published STS benchmarks (STS-B, SICK-R, and any available regulatory text benchmarks identified by T-01). Selection criterion: Spearman correlation on benchmark test set. Produces ranked shortlist of 3–5 models.
+
+**Phase 2 — Calibration sample evaluation (pre-Gate 2 held-out sample):**
+Shortlisted models evaluated on a held-out calibration sample using:
+- Silhouette score on the SCF control embedding space
+- Cross-model agreement: pairwise Spearman between models' pairwise similarity rankings
+
+**Primary model**: Model with highest cross-model agreement + silhouette composite score. Designation logged to Preregistration Ledger with cryptographic timestamp before Gate 2 split executes.
+
+**All other models**: Designated as secondary/sensitivity analyses at the same timestamp. Model selection is not revisited after Gate 2.
 
 ---
 
@@ -155,3 +172,23 @@ The selection criterion is fixed here. It is not changed after models are evalua
 - Null results reported with effect size estimate and CI — "no significant difference" without a CI is not a finding
 - All figures include uncertainty visualization (error bars, CI ribbons, or equivalent)
 - Subgroup analyses pre-specified in Section 2; post-hoc subgroup analyses labeled exploratory
+
+---
+
+## 12. Limitations and Design Tradeoffs
+
+This section is required. It acknowledges known limitations of the design before any results are seen. It is written here so it cannot be omitted or softened after results are known.
+
+### Exploratory-Guided Hypothesis Selection
+
+The SAP is finalized at Gate 2, after exploratory analysis. This is intentional — specifying effect sizes before seeing the data produces authorial guesses presented as pre-specified thresholds (see issue #59 resolution). But this design has a cost: hypotheses entering Gate 2 are selected based on what looked tractable or promising in the exploratory phase. This is not traditional pre-registration. It is a two-stage adaptive design with a registration checkpoint between stages.
+
+**Nature of the bias:** Effect sizes for data-adaptive hypotheses are subject to inflation relative to theory-derived hypotheses. Hypotheses that looked uninteresting in exploratory analysis are less likely to be registered, even if they would have been pre-specified before data was seen.
+
+**Mitigation 1 — Multiple testing correction:** Benjamini-Hochberg FDR correction applied across all confirmatory hypotheses regardless of whether they are theory-derived or data-adaptive. Correction is applied to the full registered hypothesis set, not a subset selected after results.
+
+**Mitigation 2 — Mandatory null result reporting:** Every hypothesis that enters the confirmatory phase is reported in all outputs regardless of outcome. Selective reporting of significant findings is not permitted. The full hypothesis set and all test results appear in the Preregistration Ledger and in any published appendix.
+
+**Mitigation 3 — Epistemic status labeling:** All findings are labeled with their epistemic origin — `theory-derived` (pre-specified from literature/theory before any SCF data was seen), `data-adaptive` (registered before confirmatory test but generated from exploratory findings), or `exploratory` (not pre-registered). Labels appear in all outputs including publications. Readers assess inference strength for each finding independently.
+
+This limitation is disclosed in the methods section of all publications. The adaptive design is not a flaw to hide — it is the appropriate design for an autonomous iterative research system operating on data it has not yet seen. The mitigations above provide the transparency that makes adaptive findings interpretable.
