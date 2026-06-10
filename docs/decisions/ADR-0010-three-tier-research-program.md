@@ -80,20 +80,15 @@ This ADR captures the strategic architecture of the full program so that every d
 
 **The research program this tier enables:**
 
-*Financial loss attribution.* Using control failure data, breach databases, and regulatory penalty records, build a causal model of which control failures drive financial losses and by how much. Not correlation — causal inference using do-calculus and causal forests, so the model answers "if we had implemented control X, what would our expected loss have been?"
+*[Amended by #64 resolution — 2026-06-10]*
 
-*Feature importance for organizational risk.* Gradient boosting models (LightGBM, XGBoost) trained on organizational control posture data, with SHAP values explaining which features — which specific controls or control domains — drive the most variance in risk outcomes. The SHAP layer is the explainability bridge between "the ML says so" and "the CISO can defend it to the board."
+The original Tier 3 design specified causal inference via do-calculus and causal forests. That specification was made before Tier 1 or Tier 2 data was examined. Adversarial review (issue #64) found that causal forests assume identification is already achieved — they do not create it — and that the required data (breach records, financial loss at organizational scale, control posture data) may not exist in usable form for causal inference. FAIR models use expert elicitation precisely because this data is unavailable.
 
-*Monte Carlo risk quantification.* Take the causal model's findings and run Monte Carlo simulations to produce probability distributions over financial outcomes. "If your organization has these 5 control gaps, your expected annual loss is $X with a 90% confidence interval of [$Y, $Z]." This is what actuaries do for insurance. Nobody has done it for cybersecurity controls grounded in empirically proven framework relationships.
+**Tier 3 methodology is TBD by Tier 2 findings.** The platform will evaluate what analytical leverage Tier 2 data provides and propose a Tier 3 methodology at that point. Candidate approaches include genuine causal inference (if an identification strategy is achievable), predictive modeling (if causal identification is not achievable with available data), or actuarial loss modeling grounded in empirically validated framework relationships from Tier 1 and 2.
 
-*Organizational parameterization.* Every organization is different. The model must accept organizational parameters — industry sector, size, geography, existing framework portfolio, maturity level — and produce organization-specific findings. The output is not a generic ranking of controls. It is "for your organization, given what you have, here is what matters most and what it costs you not to have it."
+The commercial objective — quantifying what it costs organizations when specific controls fail — remains unchanged. The method for achieving it is held open pending evidence.
 
-**DS/ML stack for Tier 3:**
-- Gradient boosting (LightGBM/XGBoost) + SHAP for feature importance and explainability
-- Causal forests and do-calculus for causal inference (not just correlation)
-- Survival analysis for time-to-breach / time-to-penalty modeling
-- Monte Carlo simulation for risk quantification with confidence intervals
-- Actuarial loss modeling (draws from FAIR methodology but empirically grounded)
+Any Tier 3 methodology proposal is a Charter amendment under ADR-0012 and requires Thomas approval before execution.
 
 **Tier 3 is deferred.** It requires Tier 2 outputs as inputs and involves personally identifiable organizational data that introduces privacy and consent constraints outside the current project's scope. Architecture decisions that would affect Tier 3's feasibility should be flagged, but no Tier 3 implementation work begins until Tier 2 is operational.
 
