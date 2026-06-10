@@ -36,11 +36,16 @@ Adversarial review identified two structural problems:
 
 Candidate embedding models are evaluated on mathematical criteria independent of STRM:
 
-**Phase 1 (no SCF data):** Models evaluated on published STS benchmarks (STS-B, SICK-R, domain-appropriate regulatory text benchmarks). Produces ranked shortlist of 3–5 models.
+**Phase 1 (no SCF data):** Models evaluated on published STS benchmarks (STS-B, SICK-R) and SCF structural metadata anchor pairs (see below). T-01 searches for regulatory/legal domain benchmarks during Phase 0; if found, added to Phase 1. If not found, absence is documented and Phase 2 results weighted more heavily. Produces ranked shortlist of 3–5 models.
+
+**Candidate model set diversity requirement:** The candidate set must include at minimum two diversity anchors beyond the general-purpose model cluster: (1) a model domain fine-tuned on legal/regulatory text; (2) a model from a different architecture class (sparse retrieval or substantially different training corpus). T-01 identifies specific models during Phase 0. Diversity anchor selection is logged to the Preregistration Ledger before Phase 1 runs. Phase 1 does not run without both anchors present.
+
+**SCF structural metadata anchor pairs (no human labeling required):** Similarity anchors = control pairs with STRM relationship '= Equal To'. Dissimilarity anchors = control pairs across unrelated domains with STRM relationship '∅ No Relation'. Used in both Phase 1 and Phase 2 consistency validation.
 
 **Phase 2 (pre-Gate 2 calibration sample):** Shortlisted models evaluated on a held-out calibration sample using:
 - **Silhouette score** — internal cluster validity of the embedding space
-- **Cross-model agreement** — pairwise Spearman between models' similarity rankings; models that agree with the majority of other models are more reliable
+- **Anchor consistency score** — proportion of STRM '= Equal To' anchor pairs ranked above '∅ No Relation' anchor pairs in pairwise similarity. Validates that cluster geometry is consistent with the SCF's own semantic relationship assertions. Limitation: anchor quality is bounded by STRM reliability (disclosed in SAP Section 12).
+- **Cross-model agreement** — pairwise Spearman between models' similarity rankings across the full candidate set including diversity anchors. Agreement across architecturally diverse models is stronger evidence than agreement within a single training lineage.
 
 Primary model is the model with highest cross-model agreement and cluster validity. This designation is logged to the Preregistration Ledger with a cryptographic timestamp before the Gate 2 confirmatory split executes.
 

@@ -122,6 +122,8 @@ Tests are grouped into families here before analysis begins. Grouping is not adj
 
 **Cross-validation**: GroupKFold, k=5, groups=scf_control_id, on training split only.
 
+**Calibration sample:** The Phase 2 calibration sample for model selection (ADR-0013) is the validation split (15% of SCF controls). No additional partition is created for model selection. The 70/15/15 split accounts for all data partitions.
+
 ---
 
 ## 8. Missing Data Protocol
@@ -151,17 +153,23 @@ No model is reported as performing "well" unless it beats the simple baseline on
 
 Primary embedding model selection follows the two-phase protocol from ADR-0013. The selection criterion is fixed here and is not changed after any SCF data is examined.
 
+**Candidate model set diversity requirement:**
+The candidate set must include at minimum: one or more general-purpose models (all-MiniLM, BGE, E5 family) plus two diversity anchors — (1) a model domain fine-tuned on legal/regulatory text; (2) a model from a different architecture class (sparse retrieval or substantially different training corpus). T-01 identifies specific models during Phase 0. Diversity anchor selection logged to Preregistration Ledger before Phase 1 runs. Phase 1 does not run without both anchors present.
+
 **Phase 1 — Benchmark evaluation (no SCF data):**
-Candidate models evaluated on published STS benchmarks (STS-B, SICK-R, and any available regulatory text benchmarks identified by T-01). Selection criterion: Spearman correlation on benchmark test set. Produces ranked shortlist of 3–5 models.
+Candidate models evaluated on: (a) STS-B and SICK-R (general-purpose, coarse filter only — see Section 12 for domain shift limitation); (b) any regulatory/legal domain STS benchmarks identified by T-01 during Phase 0 — if found, added; if not found, absence documented and Phase 2 weighted more heavily; (c) SCF structural metadata anchor pairs: similarity anchors = STRM '= Equal To' pairs; dissimilarity anchors = STRM '∅ No Relation' pairs across unrelated domains. Selection criterion: composite of Spearman correlation on benchmark sets and anchor consistency score. Produces ranked shortlist of 3–5 models.
 
-**Phase 2 — Calibration sample evaluation (pre-Gate 2 held-out sample):**
-Shortlisted models evaluated on a held-out calibration sample using:
+**Phase 2 — Calibration sample evaluation (validation split):**
+Shortlisted models evaluated on the validation split (15% of SCF controls) using:
 - Silhouette score on the SCF control embedding space
-- Cross-model agreement: pairwise Spearman between models' pairwise similarity rankings
+- Anchor consistency score: proportion of '= Equal To' anchor pairs ranked above '∅ No Relation' anchor pairs
+- Cross-model agreement: pairwise Spearman between models' pairwise similarity rankings across the full candidate set including diversity anchors
 
-**Primary model**: Model with highest cross-model agreement + silhouette composite score. Designation logged to Preregistration Ledger with cryptographic timestamp before Gate 2 split executes.
+**Primary model**: Model with highest composite score across all three Phase 2 criteria. Designation logged to Preregistration Ledger with cryptographic timestamp before Gate 2 split executes.
 
 **All other models**: Designated as secondary/sensitivity analyses at the same timestamp. Model selection is not revisited after Gate 2.
+
+**OPEN DECISION — DIVERGENCE-01:** Operationalization of model-STRM divergence metric. Must be selected and logged to the Preregistration Ledger before any STRM comparison results are examined. Candidate approaches: (A) Map STRM categories to ordinal numeric scale + Spearman rank correlation; (B) Threshold model similarity scores into STRM categories + agreement rate; (C) Polychoric correlation treating STRM as ordinal; (D) Rank preservation test. Selection criterion: choose the operationalization that makes fewest assumptions about STRM category spacing given the observed label distribution from EDA. This is a hard Gate 2 prerequisite — STRM comparison results cannot be examined before DIVERGENCE-01 is closed.
 
 ---
 
@@ -192,3 +200,15 @@ The SAP is finalized at Gate 2, after exploratory analysis. This is intentional 
 **Mitigation 3 — Epistemic status labeling:** All findings are labeled with their epistemic origin — `theory-derived` (pre-specified from literature/theory before any SCF data was seen), `data-adaptive` (registered before confirmatory test but generated from exploratory findings), or `exploratory` (not pre-registered). Labels appear in all outputs including publications. Readers assess inference strength for each finding independently.
 
 This limitation is disclosed in the methods section of all publications. The adaptive design is not a flaw to hide — it is the appropriate design for an autonomous iterative research system operating on data it has not yet seen. The mitigations above provide the transparency that makes adaptive findings interpretable.
+
+### Phase 1 Benchmark Domain Shift
+
+STS-B and SICK-R were built from everyday language corpora (image captions, news headlines). They do not test GRC-domain semantic distinctions. Phase 1 benchmark results are treated as a coarse filter only. Domain-appropriate evaluation relies on SCF structural metadata anchor pairs and Phase 2 calibration sample results. A human-labeled SCF control pair gold standard evaluation set does not currently exist and is designated as a post-publication community contribution milestone.
+
+### Anchor Consistency Circularity
+
+The anchor consistency score uses STRM-asserted relationship pairs ('= Equal To', '∅ No Relation') as weak supervision. STRM reliability is simultaneously under investigation as part of the secondary analysis. This creates a partial circularity: STRM assertions are used to validate the embedding while their reliability is being tested. The circularity is partial — silhouette score and cross-model agreement are independent of STRM — and is disclosed here prior to any results being examined.
+
+### STRM Inter-Rater Reliability
+
+STRM inter-rater reliability (Fleiss kappa on a re-rated sample) requires GRC domain expert raters. Two paths are available: (1) rater recruitment during Phase 0 — if selected, documented as a Gate 1 prerequisite; (2) if rater recruitment is infeasible, STRM reliability is unestimated. In path 2, the interpretation requiring evidence of STRM reliability is unavailable and model-STRM divergence cannot be attributed to annotator inconsistency vs. systematic annotation error. Path selection is logged to the Preregistration Ledger before Gate 1. Rater recruitment is also designated as a post-publication community contribution milestone.
