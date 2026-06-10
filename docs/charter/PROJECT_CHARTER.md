@@ -444,6 +444,49 @@ The SCF's explicit argument that EDC > NLP for IP reasons does not preclude anal
 
 ---
 
+## 8.5 Program Governance — Tier Completion and Escalation
+
+*Established via issues #91 and #94. Supersedes the original auto-escalation language in Section 1.5.*
+
+### Execution Model
+
+The platform is an autonomous research organism (ADR-0012). Thomas builds and governs the infrastructure; the platform conducts the research. Thomas approves Charter amendments and tier completion; the platform handles all execution within approved scope.
+
+### Tier 1 Completion Criteria
+
+Tier 1 is complete when **both** of the following are true:
+
+1. **SCF data space fully characterized** — platform self-assessed. The platform evaluates diminishing returns across active research threads. When no active module is generating findings of sufficient novelty or business significance, the platform generates a completion assessment with supporting evidence.
+
+2. **At least one Tier 1 finding published** — preprint (arXiv) counts. The publication serves two purposes simultaneously: community influence (primary strategic objective) and context base for Tier 2 exploration. The publication informs Tier 2 possibilities; it does not pre-specify Tier 2 hypotheses.
+
+Tier 1 completion is **platform-proposed, Thomas-approved**: the platform generates a Tier 1 completion report, Thomas reviews and approves. Tier 1 is not done until the completion report is approved.
+
+### Tier Escalation Model
+
+**T1 → T2 is a completion gate, not a quality gate.**
+
+Tier 2 executes when Tier 1 is complete — unconditionally. The quality of Tier 1 findings does not gate Tier 2. Cross-framework comparison is worth conducting regardless of whether Tier 1 findings are strong or null. Null results in Tier 1 are findings; they do not block Tier 2.
+
+If the Tier 1 platform generates cross-framework intelligence (questions comparing SCF to other frameworks), that is a **Charter violation** — the scope boundary is broken, not the findings. This triggers Tier B routing per ADR-0012: park the finding, notify Thomas, correct scope. Tier 2 does not begin early because interesting cross-framework questions emerge.
+
+**T2 → T3 is a prerequisites gate.**
+
+Tier 3 has genuine blocking prerequisites that do not currently exist:
+- External breach/loss data licensing
+- Privacy and consent framework design
+- Ethics review
+
+Tier 3 cannot proceed until all three prerequisites are independently satisfied. The platform monitors T3 prerequisites passively but cannot self-authorize T3 entry under any conditions. Thomas initiates T3 feasibility work explicitly.
+
+### Tier 2 and Tier 3 Completion
+
+Follow the same two-condition model as Tier 1, adapted to their scope:
+- Fully characterized data space for that tier's domain
+- At least one published finding from that tier
+
+---
+
 ## 9. Open Questions (To Be Resolved Before Build Begins)
 
 1. **Historical version analysis**: SCF releases quarterly. How many historical versions should the initial corpus include? Version-comparison analysis (how the control graph evolves over time) is a potential P6 module.
