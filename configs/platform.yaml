@@ -1,0 +1,150 @@
+# HC-GRC Platform Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+# This file is version-controlled. It defines platform-scope parameters that
+# are set before Phase 1 begins and remain stable across runs within a phase.
+#
+# Experiment-specific overrides go in configs/experiments/.
+# Never commit secrets here — connection strings live in env vars.
+# ──────────────────────────────────────────────────────────────────────────────
+
+platform:
+  name: hc-grc
+  version: "0.1.0"
+  phase: phase_0  # updated to phase_1 when Gate 1 approves
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+
+data:
+  corpus: scf
+  corpus_version: "2024.3"  # SCF release version — update when corpus is acquired
+  expected_controls: 1400
+  expected_domains: 33
+  expected_strm_mappings: 280000
+
+  # Local paths (relative to repo root)
+  raw_dir: data/01-raw
+  interim_dir: data/02-interim
+  processed_dir: data/03-processed
+  manifest_path: data/01-raw/manifest.json  # SHA-256 seed derived from this file
+
+# ── Data splits ───────────────────────────────────────────────────────────────
+
+splits:
+  train: 0.70
+  validation: 0.15
+  test: 0.15
+  # Seed is derived from SHA-256 of manifest_path — not set here.
+  # See src/nodes/data_split.py::derive_seed()
+  groupby: scf_control_id  # GroupKFold grouping variable
+
+# ── Embedding model candidates (LEDGER-0002, 2026-06-11) ─────────────────────
+# Locked before Phase 1. Changes require a LEDGER protocol-revision entry.
+# primary_model is designated at Gate 2 after Phase 2 calibration.
+
+model_candidates:
+  primary_model: null  # set at Gate 2 — DO NOT populate before Gate 2
+
+  general_purpose:
+    - id: sentence-transformers/all-MiniLM-L6-v2
+      label: all-MiniLM-L6-v2
+      role: general_purpose
+      rationale: Baseline; establishes performance floor
+      local_cache: models/all-MiniLM-L6-v2
+
+    - id: BAAI/bge-base-en-v1.5
+      label: bge-base-en-v1.5
+      role: general_purpose
+      rationale: Strong general-purpose; instruction-aware
+      local_cache: models/bge-base-en-v1.5
+
+    - id: intfloat/e5-base-v2
+      label: e5-base-v2
+      role: general_purpose
+      rationale: E5 family; instruction-tuned for semantic similarity
+      local_cache: models/e5-base-v2
+
+  diversity_anchors:
+    # Anchor 1: legal/regulatory domain fine-tuning
+    - id: nlpaueb/legal-bert-base-uncased
+      label: legal-bert-base-uncased
+      role: diversity_anchor_legal
+      rationale: >
+        Trained on EU legislation, contracts, and court decisions.
+        GRC controls are regulatory artifacts — closer training distribution
+        than general corpora. Provides domain fine-tuning diversity.
+      local_cache: models/legal-bert-base-uncased
+
+    # Anchor 2: architectural diversity (sparse retrieval)
+    - id: naver/splade-cocondenser-ensemble-distil
+      label: splade-cocondenser-ensemble-distil
+      role: diversity_anchor_sparse
+      rationale: >
+        Sparse learned representation — different architecture class from all
+        dense models. Captures lexical overlap differently from cosine similarity.
+        If sparse and dense models agree on STRM divergence, the finding is more
+        robust. Runs locally, no SaaS dependency.
+      local_cache: models/splade-cocondenser-ensemble-distil
+
+# ── Phase 1 benchmarks (populated by T-01 during Phase 0 / Phase 1) ──────────
+
+phase1_benchmarks:
+  # General-purpose STS benchmarks (coarse filter only — see SAP §12 domain shift)
+  sts_benchmarks:
+    - STS-B
+    - SICK-R
+  # Regulatory/legal domain benchmarks — T-01 searches for these during Phase 0
+  # If found, added here before Phase 1. If not found, absence documented.
+  regulatory_benchmarks: []  # T-01 to populate
+
+# ── PostgresSaver (checkpointing) ─────────────────────────────────────────────
+
+checkpointing:
+  backend: postgres  # postgres | memory (memory for Phase 0 tests only)
+  # Connection string read from HCGRC_POSTGRES_URL env var.
+  # Default: postgresql://localhost:5432/hcgrc
+  database: hcgrc
+  host: localhost
+  port: 5432
+
+# ── Observability ─────────────────────────────────────────────────────────────
+
+observability:
+  # Phoenix: local self-hosted LLM observability (LangSmith disqualified — SaaS-only)
+  phoenix:
+    enabled: true
+    host: localhost
+    port: 6006
+    project_name: hc-grc
+
+  # MLflow: local experiment tracking
+  mlflow:
+    enabled: true
+    tracking_uri: "mlruns"  # local directory; no remote server
+    experiment_name: hc-grc
+
+# ── Provenance ────────────────────────────────────────────────────────────────
+
+provenance:
+  # W3C PROV-DM serialization
+  output_dir: data/provenance
+  format: json-ld  # json-ld | turtle | n-triples
+
+# ── Research parameters ───────────────────────────────────────────────────────
+
+research:
+  # Phase 1 — exploratory analysis parameters
+  # Populated before Phase 1 begins; updated between phases via protocol-revision.
+  umap:
+    n_neighbors: 15  # default; tuned during exploratory
+    min_dist: 0.1
+    metric: cosine
+
+  hdbscan:
+    min_cluster_size: 10  # default; tuned during exploratory
+    min_samples: 5
+    metric: euclidean  # on UMAP-reduced embeddings
+
+  # STRM anchor pairs for Phase 1 model evaluation (SAP §10)
+  strm_anchors:
+    similarity_anchor: "= Equal To"      # STRM relationship for similarity anchors
+    dissimilarity_anchor: "∅ No Relation"  # STRM relationship for dissimilarity anchors

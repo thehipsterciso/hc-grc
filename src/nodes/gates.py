@@ -83,9 +83,15 @@ def gate_1_node(state: HCGRCState) -> dict[str, Any]:
         "compute_data_split() produces identical splits on two independent runs (SHA-256 seed)",
         "PostgresSaver write/read benchmark complete — throughput logged to MLflow",
         "Governance dry-run complete — escalation loop exercised end-to-end",
-        "Diversity anchor model candidates identified by T-01 and logged to Preregistration Ledger",
-        "DIVERGENCE-01 operationalization selected and logged (hard prerequisite per SAP §10)",
-        "Fleiss kappa path selected (rater recruitment or acknowledged limitation) per SAP §12",
+        # ── Preregistration Ledger entries (logged before Phase 1 data ingestion) ──
+        "LEDGER-0002: Diversity anchor model candidates logged (T-01 — 3 general + 2 anchors)",
+        "LEDGER-0003: Fleiss kappa path selection logged (path 1: recruit raters | path 2: acknowledge unestimated)",
+        # ── NOTE: DIVERGENCE-01 is a Gate 2 prerequisite, NOT Gate 1 ──────────────
+        # DIVERGENCE-01 (operationalization of model-STRM divergence) requires the
+        # STRM label distribution from EDA — which has not run yet at Gate 1.
+        # Decision framework is defined in SAP §10. Specific operationalization is
+        # selected post-EDA, logged to Preregistration Ledger before Gate 2.
+        # Confirmed: SAP §10 DIVERGENCE-01 decision framework understood and acknowledged",
     ]
 
     proposal = _build_gate_proposal(

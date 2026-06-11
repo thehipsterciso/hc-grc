@@ -58,9 +58,17 @@ Downstream consumers sort by `timestamp` before processing. List position is nev
 
 ### 4. Gate Status Write Protection (#74)
 
-All `gate_status` and `gate_decisions` writes are routed through a single serialized gate coordinator node. No agent writes directly to these keys. The coordinator is the sole authorized writer, enforced by LangGraph edge definitions (per Decision 7 — topology enforcement).
+All `gate_status` writes go through `gate_coordinator_node`. No other node writes this key directly.
 
-Sequential by construction. No custom reducer or runtime type checking required.
+**Phase 0 (linear topology) — implemented via merge reducer:**
+`gate_status` is typed `Annotated[dict[GateID, GateStatus], lambda a, b: {**a, **b}]`. Each `gate_coordinator_node` call returns only the new `{gate_id: record}` entry; LangGraph merges it into the existing dict. This is safe under concurrent writes because dict-merge is commutative for non-overlapping keys (each gate writes a unique `gate_id`).
+
+`gate_coordinator_node` is a helper function called from within gate nodes — it is **not** a standalone LangGraph node in Phase 0. The ADR was written before implementation; the merge reducer approach was selected during adversarial review (F1/F4, 2026-06-11) as the correct Phase 0 mechanism.
+
+**Phase 1 (parallel topology) — to be implemented:**
+When Phase 1 introduces parallel agent execution, the merge reducer alone cannot prevent two agents writing the same `gate_id` key simultaneously. Phase 1 will promote `gate_coordinator_node` to a true serialized LangGraph node with explicit edges from all gate-writing agents. Tracked in GitHub issue #103.
+
+**Topology enforcement (Decision 7 / #78) is a Phase 1 goal, not a Phase 0 guarantee.**
 
 ---
 

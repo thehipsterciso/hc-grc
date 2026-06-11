@@ -123,6 +123,124 @@ null
 
 ---
 
+```
+---
+type: pre-registration
+entry_id: LEDGER-0002
+date: 2026-06-11
+author: Thomas Jones
+rfc3161_tsr: protocol/registration/LEDGER-0002.tsr
+---
+
+### Summary
+Phase 0 model candidate set registration. Locks the embedding model candidate list
+required by SAP §10 before Phase 1 runs. Registers two diversity anchors as required
+by ADR-0013 and SAP §10. Candidate-level performance evaluation happens in Phase 1
+(Phase 1 benchmark evaluation + Phase 2 calibration sample). Selection of the primary
+model is a Gate 2 event — this entry only locks who is in the race.
+
+### Details
+- artifact: configs/platform.yaml (model_candidates section)
+- content_hash: [to be populated at commit time]
+- git_commit_sha: [to be populated at commit time]
+- registered_by: Thomas Jones
+
+**General-purpose cluster (3 models):**
+
+| Model | HuggingFace ID | Rationale |
+|-------|---------------|-----------|
+| all-MiniLM-L6-v2 | sentence-transformers/all-MiniLM-L6-v2 | Baseline; widely cited; fast; establishes performance floor |
+| BGE-base-en-v1.5 | BAAI/bge-base-en-v1.5 | Strong general-purpose; instruction-aware; well-maintained |
+| E5-base-v2 | intfloat/e5-base-v2 | E5 family; instruction-tuned for retrieval and semantic similarity |
+
+**Diversity anchor 1 — legal/regulatory domain fine-tuning:**
+
+| Model | HuggingFace ID | Rationale |
+|-------|---------------|-----------|
+| Legal-BERT | nlpaueb/legal-bert-base-uncased | Trained on EU legislation, contracts, and court decisions. GRC controls are regulatory artifacts; this model's training distribution is closer to SCF control language than general corpora. Widely cited in legal NLP literature. |
+
+**Diversity anchor 2 — architectural diversity (sparse retrieval):**
+
+| Model | HuggingFace ID | Rationale |
+|-------|---------------|-----------|
+| SPLADE-v2 Ensemble Distil | naver/splade-cocondenser-ensemble-distil | Sparse learned representation; different architecture class from all dense models above. Captures lexical overlap differently from cosine similarity over dense embeddings. If sparse and dense models agree on STRM divergence, the finding is more robust than dense-only agreement. Runs locally — no SaaS dependency. |
+
+**What this entry does NOT lock:**
+- Phase 1 benchmark scores (to be populated during Phase 1)
+- Phase 2 calibration sample scores (to be populated before Gate 2)
+- Primary model designation (Gate 2 event — not decided here)
+- DIVERGENCE-01 operationalization (Gate 2 prerequisite — decided after EDA)
+
+**Phase 1 may not run without both diversity anchors present in the candidate set.**
+Any change to this candidate list requires a LEDGER protocol-revision entry before
+Phase 1 begins.
+
+### Dissent
+null
+```
+
+---
+
+```
+---
+type: pre-registration
+entry_id: LEDGER-0003
+date: 2026-06-11
+author: Thomas Jones
+rfc3161_tsr: protocol/registration/LEDGER-0003.tsr
+---
+
+### Summary
+Fleiss kappa path selection per SAP §12. SAP §12 specifies two paths for estimating
+STRM inter-rater reliability: (1) recruit GRC domain expert raters before Gate 1 as a
+prerequisite; (2) acknowledge that STRM reliability is unestimated and close the
+interpretation pathway that requires reliability evidence. This entry selects and locks
+Path 2 before Phase 1 begins.
+
+### Details
+- artifact: docs/protocol/03_statistical_analysis_plan.md (Section 12, STRM
+  Inter-Rater Reliability subsection)
+- content_hash: [to be populated at commit time]
+- git_commit_sha: [to be populated at commit time]
+- registered_by: Thomas Jones
+
+**Decision: Path 2 — Acknowledge unestimated STRM reliability**
+
+Rationale for Path 2 over Path 1:
+
+Rater recruitment for Path 1 requires GRC domain experts willing to independently
+re-rate a sample of STRM mapping pairs across the five relationship categories
+(⊂ Subset, ⊃ Superset, ∩ Intersection, = Equal To, ∅ No Relation). Recruiting
+qualified raters requires either (a) formal institutional collaboration not yet
+established, or (b) compensated expert review with associated cost and timeline
+implications that are out of scope for Phase 0. Neither is available pre-publication.
+
+Path 2 is not a methodological concession — it is the correct pre-publication path.
+The SCF corpus itself provides STRM-asserted relationship pairs usable as weak
+supervision anchors (LEDGER-0002 model candidates evaluated against = Equal To and
+∅ No Relation pairs). Rater recruitment is designated a post-publication community
+contribution milestone per SAP §12.
+
+**Consequences of Path 2 (locked here, disclosed in all publications):**
+- STRM reliability is unestimated in this study
+- Interpretation pathway: "model-STRM divergence explained by annotator inconsistency
+  vs. systematic annotation error" is UNAVAILABLE
+- Available interpretation: "divergence between computational similarity and STRM labels
+  exists and is quantified; attribution to annotation error vs. semantic disagreement
+  requires future reliability estimation"
+- This limitation appears in SAP §12 and in the methods section of all publications
+
+**DIVERGENCE-01 note:** Operationalization of model-STRM divergence (DIVERGENCE-01
+open decision, SAP §10) is a Gate 2 prerequisite, not a Gate 1 prerequisite. It
+requires knowing the STRM label distribution from exploratory analysis. Selection is
+deferred to post-EDA, pre-Gate 2. It is NOT logged in this entry.
+
+### Dissent
+null
+```
+
+---
+
 ## RFC 3161 Timestamp Procedure
 
 1. Lock the artifact (commit to pre-registration branch — no further modification)
