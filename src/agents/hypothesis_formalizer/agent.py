@@ -48,6 +48,8 @@ class FormalHypothesis:
     A single formalized hypothesis for the SAP.
 
     All fields required before this hypothesis is added to the Gate 2 package.
+    Field names match the Instructor schema enforced at the output boundary —
+    see agents/01-research/hypothesis-formalizer/AGENT.md Skills section.
     """
     hypothesis_id: str                  # H[module].[n] — e.g., "H1.1"
     null_hypothesis: str                # H0: specific, falsifiable statement
@@ -57,6 +59,8 @@ class FormalHypothesis:
     effect_size_metric: str             # e.g., "Spearman rho"
     effect_size_threshold: float        # minimum meaningful effect
     tail: Literal["one-tailed", "two-tailed"]
+    module: str                         # analysis module — e.g., "P1", "P2", "P3", "P4", "P5"
+    citation_anchors: list[str] = field(default_factory=list)  # DOI/URL citations grounding the hypothesis
     alpha: float = 0.05
     power_target: float = 0.80
     comparison_family: str = ""         # SAP §6 family this test belongs to

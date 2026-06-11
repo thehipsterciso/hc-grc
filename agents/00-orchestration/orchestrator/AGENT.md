@@ -40,7 +40,7 @@ Human Research Brief
 | Research brief | Human (Gate 0) | Markdown | Free-form project description, scope, P1–P5 module selection |
 | Agent completion signals | All specialist agents | Pydantic AgentResult | Structured output with artifact refs, confidence scores, anomaly flags |
 | Gate decisions | Human | LangGraph Command(resume=...) | Approve / reject / request revision with free-text rationale |
-| SAP lock confirmation | Human (Gate 2) | Signed commit hash | RFC 3161 timestamp on pre-registration branch |
+| SAP lock confirmation | Human (Gate 2) | Signed commit hash | Git commit on pre-registration branch; hash recorded in lab notebook as lock proof |
 | Anomaly escalations | Any agent | Pydantic AnomalyReport | Out-of-distribution findings that require human judgment |
 
 ## Outputs / Artifacts
@@ -71,7 +71,7 @@ Human Research Brief
 
 ## Handoffs
 
-**Receives from**: Human (research brief, gate decisions), all 50 agents (completion signals)
+**Receives from**: Human (research brief, gate decisions), all specialist agents (completion signals)
 **Passes to**: All agents (task assignments with typed inputs)
 **Human gate**: Five gates enforced via LangGraph `interrupt()`:
 - Gate 1 — Research question + theoretical framework approval
@@ -86,7 +86,7 @@ Human Research Brief
 - Never call a Team 03 Analysis or Team 04 Statistical agent with test-set data before Gate 2.
 - Never suppress or summarize agent anomaly flags — all anomalies are surfaced verbatim to the human queue.
 - Never retry a failed gate silently — gate failures are always logged and escalated.
-- Never route to Team 12–14 (Dissemination) without Gate 5 approval.
+- Never route to Report Agent or downstream dissemination agents without Gate 5 approval.
 
 ## Failure Modes & Recovery
 

@@ -67,6 +67,7 @@ class ConfirmatoryResult:
     timestamp_utc: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
     sap_section: str = ""       # e.g., "§1 Primary Analysis" — where this test is specified
     correction_applied: str | None = None  # Bonferroni/FDR/none — must match SAP §6
+    corrected_p_value: float | None = None  # p-value after multiple comparisons correction; None if no correction applied
     notes: str = ""             # anomalies, warnings — not interpretation
 
 

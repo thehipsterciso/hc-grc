@@ -58,7 +58,7 @@ Human Gate 2: SAP review + pre-registration lock
 ## Skills Used
 
 - **DSPy** — Optimizes the formalization prompts. Given a research direction, DSPy-optimized prompts reliably produce well-formed null/alternative hypothesis pairs, correctly scoped to the available data and analysis methods.
-- **Instructor** — All hypothesis outputs are typed Pydantic models. Instructor enforces that every hypothesis has: ID, null_hypothesis, alternative_hypothesis, statistical_test, effect_size_threshold, alpha, power_target, module, citation_anchors. No partial hypothesis objects leave this agent.
+- **Instructor** — All hypothesis outputs are typed Pydantic models. Instructor enforces that every hypothesis has: hypothesis_id, null_hypothesis, alternative_hypothesis, named_test, decision_rule, effect_size_metric, effect_size_threshold, tail, module, citation_anchors, alpha, power_target. No partial hypothesis objects leave this agent.
 
 ## Handoffs
 

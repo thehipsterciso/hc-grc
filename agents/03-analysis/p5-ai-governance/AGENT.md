@@ -76,7 +76,7 @@ Runs after Embedding Agent. Independent of P1–P4 in the exploratory phase; syn
 ## Behavioral Constraints
 - **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
 
-- Clustering hyperparameters (min_cluster_size, min_samples) are pre-specified in the SAP — no post-hoc tuning to achieve a "cleaner" result.
+- Clustering hyperparameters (min_cluster_size, min_samples) operate in two modes: (1) exploratory phase uses defaults from `configs/platform.yaml` and `configs/seeds.yaml` — EXP_ outputs only, no p-value language; (2) confirmatory phase uses values locked in the SAP at Gate 2 — no post-hoc tuning to achieve a "cleaner" result.
 - HDBSCAN noise points (cluster = -1) are reported as findings, not failures — isolated controls are a substantive result.
 - Per-domain and cross-domain analyses run independently — cross-domain results do not inform per-domain hyperparameter selection.
 - Cluster labels are assigned by content analysis after clustering, not before — labels cannot influence cluster formation.

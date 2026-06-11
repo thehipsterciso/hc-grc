@@ -1,0 +1,25 @@
+# configs/seeds.yaml
+# Deterministic random seeds for reproducible analysis.
+#
+# PHASE SCOPE:
+#   These seeds govern EXPLORATORY phase runs only.
+#   Confirmatory hyperparameters (including any seed overrides) are
+#   locked in the SAP at Gate 2 and take precedence over these values.
+#
+# REFERENCE:
+#   agents/03-analysis/p5-ai-governance/AGENT.md — UMAP instability recovery
+#   agents/03-analysis/p5-ai-governance/agent.py — UMAP / HDBSCAN defaults
+#   configs/platform.yaml — model_candidates and clustering section
+
+umap:
+  random_state: 42
+  n_epochs: 500            # fixed epoch count reduces run-to-run instability
+
+hdbscan:
+  # HDBSCAN is deterministic given fixed inputs; no RNG seed is needed.
+  # Exploratory defaults — SAP §4 locks confirmatory values.
+  min_cluster_size: 10
+  min_samples: 5
+
+embedding:
+  seed: 42                 # passed to sentence-transformers encode() where supported
