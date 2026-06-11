@@ -85,16 +85,49 @@ model_candidates:
         robust. Runs locally, no SaaS dependency.
       local_cache: models/splade-cocondenser-ensemble-distil
 
-# ── Phase 1 benchmarks (populated by T-01 during Phase 0 / Phase 1) ──────────
+# ── Phase 1 benchmarks (T-01 complete — docs/research/T01-regulatory-benchmarks.md) ─
 
 phase1_benchmarks:
   # General-purpose STS benchmarks (coarse filter only — see SAP §12 domain shift)
   sts_benchmarks:
     - STS-B
     - SICK-R
-  # Regulatory/legal domain benchmarks — T-01 searches for these during Phase 0
-  # If found, added here before Phase 1. If not found, absence documented.
-  regulatory_benchmarks: []  # T-01 to populate
+
+  # Regulatory/legal domain proxy benchmarks (T-01 complete, 2026-06-11)
+  # FINDING: No GRC-specific semantic similarity benchmark exists. These are the
+  # closest available proxies with meaningful domain gaps to SCF control language.
+  # See docs/research/T01-regulatory-benchmarks.md for full assessment.
+  # Primary model selection at Gate 2 uses the SCF calibration sample (SAP §10),
+  # NOT these proxies. Use for Phase 1 coarse filtering only.
+  regulatory_benchmarks:
+
+    - id: lexglue-eurlex
+      name: LexGLUE / EURLEX
+      hf_dataset: coastalcph/lex_glue
+      hf_config: eur_lex
+      license: CC-BY-4.0
+      domain: EU legislation (legal)
+      task_format: multi-label classification over 100 EuroVoc categories
+      adaptation: >
+        Construct same-label vs. random-label document pairs; measure cosine similarity
+        AUC. Documents sharing EuroVoc labels are semantically related by topic.
+      phase1_use: legal domain proxy — coarse filter
+      domain_gap: full EU laws vs. 1-5 sentence SCF control descriptions; legal register partially matches
+      paper: "Chalkidis et al. 2021, arxiv:2110.00976"
+
+    - id: obliqa
+      name: ObliQA / RIRAG
+      source: https://github.com/RegNLP/ObliQADataset
+      license: CC-BY-4.0  # verify at download time
+      domain: ADGM financial regulation (regulatory)
+      task_format: regulatory question to relevant passage retrieval
+      size: 27869 question-passage pairs from 640K words of ADGM regulatory text
+      adaptation: >
+        Use query-passage relevance pairs directly for retrieval evaluation.
+        Encode queries and passages; compute MRR@10 and NDCG@10.
+      phase1_use: regulatory language proxy — retrieval evaluation (best available fit)
+      domain_gap: financial regulation (ADGM) vs. cybersecurity GRC (SCF); register closer than general corpora
+      paper: "Gokhan et al. 2024, arxiv:2409.05677 / RegNLP 2025 workshop"
 
 # ── PostgresSaver (checkpointing) ─────────────────────────────────────────────
 
