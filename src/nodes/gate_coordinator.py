@@ -35,7 +35,6 @@ def gate_coordinator_node(state: HCGRCState, gate_id: GateID, decision: GateDeci
         run_id=state["run_id"],
     )
 
-    updated_gate_status = dict(state.get("gate_status", {}))
-    updated_gate_status[gate_id] = record
-
-    return {"gate_status": updated_gate_status}
+    # gate_status has a merge reducer ({**a, **b}) — return only the new entry.
+    # LangGraph merges it into the existing dict rather than replacing the whole field.
+    return {"gate_status": {gate_id: record}}

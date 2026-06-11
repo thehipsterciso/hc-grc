@@ -5,8 +5,15 @@ Seed derivation: SHA-256 of the raw manifest file → int.from_bytes() → int s
 Same manifest → identical seed → identical split on every independent run.
 This is the idempotency guarantee tested in test_phase0/test_data_split.py.
 
-Split strategy: GroupKFold on SCF control IDs (per SAP §7 and issue #60).
-No SCF control text appears in both train and test partitions.
+Split strategy: shuffle-and-slice on UNIQUE SCF control IDs (per SAP §7 / issue #60).
+Semantically equivalent to GroupKFold when control_ids contains exactly one entry
+per unique control. CALLER CONTRACT: control_ids must be deduplicated before calling —
+one ID per control, not one row per STRM mapping. Passing mapping rows (280,000) instead
+of control IDs (1,400) would produce leakage because set(train_ids) & set(test_ids) only
+catches list-level duplicates, not the case where the same control's mapping rows land
+in separate splits. The DataSplitAgent is responsible for deduplication before this call.
+
+No SCF control text appears in both train and test partitions (given the caller contract).
 DataSplitAgent asserts len(set(train_ids) ∩ test_ids) == 0 before writing.
 This assertion is logged and is a required Gate 1 artifact.
 
@@ -16,12 +23,10 @@ Split ratios: 70% train / 15% validation / 15% test.
 from __future__ import annotations
 
 import hashlib
-import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from sklearn.model_selection import GroupShuffleSplit
 
 
 # ── Seed derivation ───────────────────────────────────────────────────────────
@@ -36,9 +41,11 @@ def derive_seed(manifest_path: Path | str) -> tuple[str, int]:
     """
     path = Path(manifest_path)
     raw = path.read_bytes()
-    digest = hashlib.sha256(raw).digest()
-    manifest_hash = hashlib.sha256(raw).hexdigest()
-    seed = int.from_bytes(digest[:4], byteorder="big")  # 32-bit seed from first 4 bytes
+    h = hashlib.sha256(raw)
+    manifest_hash = h.hexdigest()
+    # 8 bytes (64-bit) → 1-in-2^64 collision probability between different manifests.
+    # Using int.from_bytes on the raw digest (not the hex string) for portability.
+    seed = int.from_bytes(h.digest()[:8], byteorder="big")
     return manifest_hash, seed
 
 

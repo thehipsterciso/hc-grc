@@ -54,8 +54,12 @@ class HCGRCState(TypedDict):
     thread_id: str  # LangGraph thread ID (== run_id for single-run threads)
     phase: Phase
 
-    # ── Gate tracking (serialized via GateCoordinatorNode) ───────────────────
-    gate_status: dict[GateID, GateStatus]  # written only by gate coordinator
+    # ── Gate tracking ────────────────────────────────────────────────────────
+    # Merge reducer: {**a, **b} ensures concurrent gate writes are safe by
+    # construction. gate_coordinator_node is the canonical writer, but the
+    # reducer protects against any future path that returns a partial update.
+    # Fixes: ADR-0015 §75 serial guarantee (F1) + silent overwrite risk (F4).
+    gate_status: Annotated[dict[GateID, GateStatus], lambda a, b: {**a, **b}]
 
     # ── Failure events (written by gate nodes on rejection) ───────────────────
     # Agent Evolution monitors this store for routing re-optimization signals.

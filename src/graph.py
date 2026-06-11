@@ -37,7 +37,7 @@ def phase_1_entry_node(state: HCGRCState) -> dict[str, Any]:
         "prov_activities": [
             {
                 "activity": "phase_1_entry",
-                "run_id": state.get("run_id"),
+                "run_id": state["run_id"],
                 "note": "Phase 1 not yet implemented — stub node",
             }
         ],
