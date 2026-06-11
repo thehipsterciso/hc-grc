@@ -52,7 +52,7 @@ Runs after Data Acquisition Agent completes. Blocks all analysis agents until va
 | Anomaly register | data/codebook.md | Markdown | All quality issues: description, affected records, resolution or accepted limitation |
 | Train split | data/splits/train/ (DVC tracked) | Parquet | Stratified; seed from configs/seeds.yaml |
 | Validation split | data/splits/val/ (DVC tracked) | Parquet | Stratified; same seed |
-| Test split | data/splits/test/ (DVC tracked, access-locked) | Parquet | Locked — read-accessible only after Gate 2 |
+| Test split | data/splits/test/ (DVC tracked, access-locked) | Parquet | Locked — read-accessible only after Gate 3 (EDA review complete; Gate 2 SAP lock is prerequisite) |
 | Codebook updates | data/codebook.md | Markdown | Any variables added, recoded, or documented as limited |
 
 ## Tools & MCP Servers
@@ -70,12 +70,12 @@ Runs after Data Acquisition Agent completes. Blocks all analysis agents until va
 ## Handoffs
 
 **Receives from**: Data Acquisition Agent (artifacts), configs/ (quality rules + split config)
-**Passes to**: All Team 03 Analysis agents (train + val splits), Statistical Analyst (train + val before Gate 2, test after Gate 2), Tokenization Agent (text fields for processing)
+**Passes to**: All Team 03 Analysis agents (train + val splits), Statistical Analyst (train + val before Gate 3, test split unlocked after Gate 3 EDA review — Gate 2 SAP lock is prerequisite), Tokenization Agent (text fields for processing)
 **Human gate**: Gate 2 — human reviews quality report and anomaly register before SAP is locked. Any critical quality failure (referential integrity broken, > 5% missing STRM mappings) is a Gate 2 blocker.
 
 ## Behavioral Constraints
 
-- Never provide test-split access to any agent before Gate 2 confirmation is recorded in the lab notebook.
+- Never provide test-split access to any agent before Gate 3 confirmation is recorded in the lab notebook. Gate 2 (SAP lock) is a prerequisite but not sufficient — EDA review (Gate 3) must also be confirmed before the test split is unlocked.
 - Never silently resolve a data quality failure — all anomalies are documented in the codebook and surfaced to the human.
 - Never modify the split seed after it is set in configs/seeds.yaml — changing the seed is a protocol amendment requiring a logged change.
 - Never re-run the split after Gate 2 — the split is frozen at Gate 2. Any re-split requires a full protocol amendment and new pre-registration.

@@ -61,7 +61,7 @@ Runs after Data Curation Agent. Produces the vector infrastructure that all Team
 
 ## Skills Used
 
-- **Sentence Transformers** — Primary embedding model framework. Default model: `all-mpnet-base-v2` for general semantic similarity. Domain model candidate: `pritamdeka/S-PubMedBert-MS-MARCO` or custom fine-tuned SBERT if general model F1 < 0.70 on STRM classification. Batch encoding with GPU if available; CPU fallback.
+- **Sentence Transformers** — Primary embedding model framework. Model selection governed by LEDGER-0002 and `configs/platform.yaml` model_candidates — primary model is NULL until Gate 2 model selection is complete. Batch encoding with GPU if available; CPU fallback. If selected model F1 < 0.70 on STRM classification, triggers domain model fine-tuning via Team 06 (human approval required).
 - **Qdrant** — Production vector database for semantic search. Supports hybrid search (dense + sparse), metadata filtering by SCF domain/framework/maturity level, and scroll-based bulk retrieval for P2/P3/P4/P5 analysis.
 
 ## Handoffs
@@ -77,6 +77,7 @@ Runs after Data Curation Agent. Produces the vector infrastructure that all Team
 - FAISS index is read-only after P1 analysis begins — no incremental additions during an analysis run.
 - All embedding operations use the seed from configs/seeds.yaml for any stochastic components.
 - Embedding drift monitoring: when SCF releases a new version, compute cosine similarity distribution shift — if mean shift > 0.05, flag for human review before proceeding.
+- Never export Qdrant collections or FAISS indices off-machine — these are derived works from SCF data and subject to CC BY-ND 4.0 restrictions. DVC remotes are local only.
 
 ## Failure Modes & Recovery
 

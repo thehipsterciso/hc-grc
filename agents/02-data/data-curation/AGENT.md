@@ -74,6 +74,7 @@ Runs after Data Steward validation. Produces the curated dataset that feeds into
 - Curated dataset is a separate DVC artifact — raw validated splits are never overwritten.
 - Curation rules applied to train split first; same rules applied identically to val and test splits — no split-specific curation.
 - Never make semantic judgments about which controls are "correct" — curation is structural and mechanical, not interpretive.
+- Curated dataset and all derived artifacts are subject to the SCF CC BY-ND 4.0 license — cannot be published, redistributed, or transferred off-machine. DVC remotes are local only.
 
 ## Failure Modes & Recovery
 

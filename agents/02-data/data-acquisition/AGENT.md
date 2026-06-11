@@ -73,6 +73,7 @@ Runs once at project initialization. Re-runs when SCF releases a new version. Al
 - Never proceed if SHA-256 verification fails — halt and escalate to human.
 - Data-sovereign: all acquired data stays local. DVC remote is local filesystem only.
 - Never overwrite a prior acquisition without creating a new versioned DVC entry — all versions are retained.
+- Never ingest commercially licensed regulatory framework full text (ISO 27001, PCI DSS full text, HITRUST CSF) without explicit operator license sign-off recorded in the lab notebook. These sources require a license agreement before ingestion. SCF (CC BY-ND 4.0) is pre-approved for this study; all others require separate approval.
 
 ## Failure Modes & Recovery
 
