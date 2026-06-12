@@ -46,3 +46,13 @@ def test_phoenix_endpoint_matches_config():
     expected = f"http://{cfg['host']}:{cfg['port']}"
     assert phoenix_base_url() == expected
     assert phoenix_endpoint() == f"{expected}/v1/traces"
+
+
+def test_qdrant_url_and_expected_collections():
+    from src.infrastructure.vector_store import expected_collections, qdrant_url
+
+    cfg = load_platform_config()["vector_store"]
+    assert qdrant_url() == f"http://{cfg['host']}:{cfg['http_port']}"
+    cols = expected_collections()
+    assert "hcgrc_controls" in cols
+    assert "hcgrc_mappings" in cols

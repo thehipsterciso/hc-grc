@@ -13,6 +13,7 @@ on-device; no SaaS dependencies (ADR-0002). Connection parameters live in
 | PostgreSQL 17 | LangGraph checkpoint store (interrupt/resume across gates) | Yes | Homebrew launchd service | `localhost:5432`, db `hcgrc` |
 | MLflow 3 | Experiment tracking (params, metrics, artifacts) | **No** | Serverless local SQLite file | `sqlite:///mlflow.db` |
 | Phoenix | LLM trace observability (OpenTelemetry) | Yes | launchd LaunchAgent | `localhost:6006` |
+| Qdrant | Vector store for P1–P5 embeddings | Yes | Docker (Colima) via compose | `localhost:6333` (REST), `6334` (gRPC) |
 
 `run_id` is the common key across all three (ADR-0015 #79): PostgresSaver
 `thread_id`, MLflow run tag `run_id`, Phoenix span attribute `run_id`. See
@@ -81,6 +82,34 @@ instrument_langchain(project_name="hc-grc")   # exports LangChain spans to local
 
 UI: <http://localhost:6006>.
 
+## Qdrant (vector store)
+
+Local vector DB for the embedding-driven analysis modules (P1–P5). Runs as a
+Docker container on **Colima** (headless Docker runtime for Apple Silicon —
+chosen over Docker Desktop: no GUI, no licensing). Storage persists to
+`qdrant_storage/` (gitignored); the container is `restart: unless-stopped`.
+
+```bash
+brew services start colima              # Docker runtime, always-on at login
+docker compose up -d qdrant             # start Qdrant (defined in docker-compose.yml)
+docker compose ps                       # status / health
+curl -s localhost:6333/readyz           # health check (200 = ready)
+docker compose logs -f qdrant           # logs
+docker compose down                     # stop
+```
+
+Colima needs the Compose plugin: `brew install docker-compose` and symlink it
+into `~/.docker/cli-plugins/docker-compose`. Connection params come from
+`platform.yaml -> vector_store`. Probe from Python:
+
+```python
+from src.infrastructure.vector_store import qdrant_health
+qdrant_health()   # {url, reachable, collections_present, collections_missing}
+```
+
+Collections (`hcgrc_controls`, `hcgrc_mappings`, `hcgrc_literature`,
+`hcgrc_findings`) are created and populated by the Embedding Agent, not here.
+
 ---
 
 ## Bringing up a fresh compute node
@@ -91,6 +120,10 @@ brew install postgresql@17                    # if not present
 brew services start postgresql@17
 createdb hcgrc
 scripts/infra/phoenix-service.sh install      # Phoenix always-on
+brew install colima docker docker-compose     # Docker runtime + compose
+ln -sf /opt/homebrew/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+brew services start colima                    # Docker runtime, always-on
+docker compose up -d qdrant                   # vector store
 # MLflow needs nothing — first configure_mlflow() creates mlflow.db
 ```
 
@@ -98,7 +131,9 @@ scripts/infra/phoenix-service.sh install      # Phoenix always-on
 
 These remain blocked on this node and gate downstream phases:
 
-- **Qdrant** (Docker) + **FAISS** indices — vector stores for P1–P5
-- **Local LLM inference** (llama.cpp / Ollama) — on-device inference for the analysis agents
-- **DVC local remote** — data versioning for SCF acquisition (Phase 1)
-- **Docker Compose stack** + **git deploy trigger** — orchestration and auto-deploy
+- **Local LLM inference** (llama.cpp / Ollama) — on-device inference for the
+  analysis agents. Gated on pending-decision #1 (local vs API, model choice) —
+  a research-design call, see SWARM_IMPLEMENTATION_ROADMAP.md.
+- **DVC local remote** — data versioning for SCF acquisition (Phase 1).
+- **FAISS** all-pairs index — built by the Embedding Agent alongside Qdrant.
+- **Git deploy trigger** (pull loop / webhook) — auto-deploy from the workstation.

@@ -158,6 +158,23 @@ observability:
     tracking_uri: "sqlite:///mlflow.db"
     experiment_name: hc-grc
 
+# ── Vector store (Qdrant) ─────────────────────────────────────────────────────
+# Local, data-sovereign vector DB (ADR-0002). Runs as a Docker container via
+# docker-compose.yml on the Colima runtime. Storage persists to ./qdrant_storage
+# (gitignored). Collections are created by the Embedding Agent.
+
+vector_store:
+  backend: qdrant
+  host: localhost
+  http_port: 6333
+  grpc_port: 6334
+  prefer_grpc: true
+  collections:
+    - hcgrc_controls     # 1,400+ control embeddings
+    - hcgrc_mappings     # 280K+ STRM mapping embeddings
+    - hcgrc_literature   # literature corpus embeddings
+    - hcgrc_findings     # prior-run findings (ideation reuse)
+
 # ── Provenance ────────────────────────────────────────────────────────────────
 
 provenance:
