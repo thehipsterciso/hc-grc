@@ -65,12 +65,22 @@ Downstream    Reject + flag to
 ## Handoffs
 **Receives from**: All LLM-generating agents (inline, synchronous)
 **Passes to**: Originating agent (pass/fail signal)
+**Human gate**: None — synchronous automated screen; failures reject and flag, but it does not own a human approval gate.
 
 ## Behavioral Constraints
 - Guardrail checks are synchronous and blocking — no output passes in parallel
 - Rejection log is append-only and never modified
 - Bias toward rejection: flagging a valid output is recoverable; passing a hallucinated one is not
 - Guardrail config is DVC-versioned — rule changes require version bump
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Hallucinated SCF control ID passes undetected | Post-hoc sample audit vs SCF source | Treat as a critical integrity incident; log to INCIDENTS.md; tighten rules; re-screen affected outputs |
+| Guardrail config unavailable or unversioned | Config load check | Fail closed — reject all outputs until config is restored |
+| SCF control ID list stale vs current acquisition | Version check vs data/01-raw/scf | Refresh the list before screening; never validate against a stale source |
+| Phoenix trace write failure | Exception on trace export | Continue screening and queue traces locally; never drop the pass/fail decision |
 
 ## Evaluation Criteria
 - [ ] Zero undetected hallucinated SCF control IDs in sample audit (50 outputs)

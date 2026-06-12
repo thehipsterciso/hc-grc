@@ -60,11 +60,21 @@ GitHub push / PR event (GitHub Management Agent)
 ## Handoffs
 **Receives from**: GitHub Management Agent (push events)
 **Passes to**: Code Review Agent (lint/security failures), SBOM Agent (generation triggers), VEX Agent (update triggers), Dependency Management Agent (audit failures), Orchestrator (critical pipeline failures)
+**Human gate**: None — routes pipeline results and escalates critical failures to the Orchestrator; does not own a human approval gate.
 
 ## Behavioral Constraints
 - CI/CD Agent monitors and routes — it does not modify workflow files without Code Review Agent pass
 - Critical failures (security scan findings, test failures on main) alert Orchestrator immediately
 - Workflow configuration changes require Code Review Agent review before deployment
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Workflow status fails to report | GitHub Actions API timeout/error | Retry the status poll; if persistently unavailable, alert Orchestrator and hold dependent merges |
+| Critical security finding on main | security-scan.yml result | Alert Orchestrator immediately; block dependent deploys until acknowledged |
+| Failure cannot be routed to a responsible agent | No mapping in the Workflow Inventory | Route to DevSecOps Agent + Orchestrator; never silently drop |
+| Workflow config drift vs DVC | Config hash mismatch | Flag for Code Review; do not run unreviewed workflow changes |
 
 ## Evaluation Criteria
 - [ ] All workflow results logged to lab notebook with commit SHA

@@ -74,12 +74,22 @@ Types: `feat`, `fix`, `docs`, `analysis`, `config`, `refactor`, `chore`
 ## Handoffs
 **Receives from**: All agents producing versionable artifacts, Code Review Agent (pass signal). Key producers: Repo Documentation Agent (OVERVIEW.md, README.md, RESEARCH_BRIEF.md, executive summaries after Branding Compliance review), all analysis and dissemination agents.
 **Passes to**: CI/CD Agent (triggers on push), Provenance Agent (commit SHA for provenance record)
+**Human gate**: None — enforces branch protection and review policy (main requires PR); it implements gate policy mechanically but does not itself own a human approval gate.
 
 ## Behavioral Constraints
 - Never commits secrets, credentials, or `.env` files — Code Review Agent blocks these, but GitHub Management Agent enforces as second check
 - Pre-registration branch is append-only — no force pushes, no history rewriting
 - Commit messages must be traceable — include artifact hash where applicable
 - main branch requires PR and review — no direct pushes
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Attempt to commit secrets/credentials | Second-check scan before commit | Hard block — refuse the commit even if Code Review missed it; alert DevSecOps + human |
+| Force-push or history rewrite on a protected branch | Branch-protection violation | Reject the operation; pre-registration and main are append-only by policy |
+| Pre-registration commit lacks RFC 3161 timestamp | Missing `.tsr` lock proof | Block the SAP-lock; do not record lock proof until timestamped (coordinate with Provenance Agent) |
+| Direct commit to main without PR/review | Branch-protection check | Reject; route through PR + Code Review |
 
 ## Evaluation Criteria
 - [ ] Zero secrets committed (audit via git-secrets or equivalent)

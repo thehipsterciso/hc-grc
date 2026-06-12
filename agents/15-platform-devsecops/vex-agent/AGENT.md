@@ -61,12 +61,22 @@ Lab notebook entry
 ## Handoffs
 **Receives from**: SBOM Agent (trigger + component list)
 **Passes to**: Dependency Management Agent (affected findings), License Compliance Agent (for completeness)
+**Human gate**: None — produces exploitability status and escalates `affected` findings via the Orchestrator; does not own a human approval gate.
 
 ## Behavioral Constraints
 - VEX assessments are conservative — if exploitability is unclear, status is `under_investigation` not `not_affected`
 - Local-first deployment eliminates many network-vector CVEs but does not eliminate all — each must be assessed
 - VEX document is DVC-versioned alongside the SBOM it references
 - `affected` findings escalate to Orchestrator if remediation not initiated within one week
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| CVE database unavailable | OSV/NVD fetch failure | Use the last-good local mirror; mark the assessment provisional; retry before publishing VEX |
+| Exploitability genuinely unclear | Insufficient context to decide | Assign `under_investigation` (never `not_affected`); monitor — conservative by policy |
+| `affected` finding not remediated in 7 days | Age check on affected status | Escalate to Orchestrator; never silently age out |
+| SBOM/VEX version mismatch | Version cross-check | Regenerate VEX against the current SBOM; never publish VEX referencing a stale SBOM |
 
 ## Evaluation Criteria
 - [ ] VEX generated within one CI cycle of SBOM update

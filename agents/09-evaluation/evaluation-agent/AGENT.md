@@ -66,6 +66,7 @@ Statistical Analyst (reads eval metrics for confirmatory analysis)
 ## Handoffs
 **Receives from**: Fine-tuning Agent, Post-training Agent, Quantization Agent, Local Inference Agent
 **Passes to**: Agent Evolution (metrics feed), Statistical Analyst (metrics as research evidence), Orchestrator (gate criteria check)
+**Human gate**: None — supplies evaluation metrics that inform Gate 2 (embedding/model selection) and Gate 3 (analysis review); does not itself trigger a gate.
 
 ## Behavioral Constraints
 - Test split is inaccessible before Gate 2. Pre-Gate 2 evaluation uses validation split only.

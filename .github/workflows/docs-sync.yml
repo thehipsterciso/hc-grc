@@ -94,3 +94,7 @@ jobs:
           CHANGED_FILES_PATH: /tmp/changed_files.txt
         run: |
           python scripts/check_doc_drift.py --critical-only
+
+      - name: Validate agent cards
+        run: |
+          python tools/generate_docs.py --check
