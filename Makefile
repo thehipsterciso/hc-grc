@@ -5,7 +5,7 @@ PY     := $(VENV)/bin/python
 
 .DEFAULT_GOAL := help
 
-.PHONY: help venv install test lint format clean acquire eda reproduce check-docs hooks
+.PHONY: help venv install test lint format clean acquire eda reproduce check-docs hooks generate-docs validate-cards
 
 help:
 	@echo "Available targets:"
@@ -20,6 +20,8 @@ help:
 	@echo "  reproduce   Full pipeline: acquire → process → analyze"
 	@echo "  check-docs  Factual doc audit + drift advisory"
 	@echo "  hooks       Install local pre-commit hooks (factual doc audit every commit)"
+	@echo "  generate-docs  Validate agent cards + regenerate agents/generated/"
+	@echo "  validate-cards Validate agent cards only (exit 1 on hard errors)"
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -67,3 +69,9 @@ hooks:
 	@command -v pre-commit >/dev/null 2>&1 || { echo "pre-commit not found — run: pip install pre-commit"; exit 1; }
 	pre-commit install
 	@echo "Hooks installed. Factual doc audit runs on every commit."
+
+generate-docs:
+	@python3 tools/generate_docs.py
+
+validate-cards:
+	@python3 tools/generate_docs.py --check

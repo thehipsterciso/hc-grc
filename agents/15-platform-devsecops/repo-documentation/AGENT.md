@@ -4,7 +4,7 @@ description: Produces and maintains audience-stratified documentation for the HC
 version: 1.0.0
 team: 15-platform-devsecops
 status: primary
-trigger: Every pull request — no PR merges without a documentation drift check. Also triggered by phase transitions, new research findings, and agent card additions.
+trigger: always — every pull request (no PR merges without a documentation drift check), plus phase transitions, new research findings, and agent card additions.
 author: HC-GRC
 tags: [Documentation, Audience Stratification, Executive Communication, GitHub, Brand Compliance, Persona-Aware]
 skills: [doc-coauthoring]
