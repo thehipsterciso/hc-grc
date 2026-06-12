@@ -26,6 +26,14 @@ Supervised fine-tuning adapts a model to domain vocabulary and task format. It d
 | Hallucination rate unacceptable | > 5% fabricated control citations in 50-sample eval | QA Agent → Orchestrator |
 | Preference alignment needed | Model produces correct but inappropriately confident outputs | Agent Evolution assessment |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **TRL** — HuggingFace's Transformer Reinforcement Learning library. Provides DPO (Direct Preference Optimization) and PPO trainers.
 - **GRPO RL Training** — Group Relative Policy Optimization for research quality reward modeling.

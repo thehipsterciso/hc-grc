@@ -36,6 +36,13 @@ Activated as a drop-in replacement for Local Inference Agent when throughput thr
 | Inference results | Calling agent | Pydantic InferenceResult | Same schema as Local Inference Agent |
 | Throughput metrics | MLflow | JSON | Tokens/sec, latency percentiles, GPU utilization |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **TensorRT-LLM** — NVIDIA-optimized inference. Used when GPU available and maximum throughput required.
 - **vLLM** — PagedAttention-based continuous batching. Used when TensorRT-LLM compilation time is prohibitive or model not supported.

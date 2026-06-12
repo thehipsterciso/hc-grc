@@ -59,6 +59,14 @@ Agents                agent with specific
 | Alternative explanations | Plausible alternative interpretations acknowledged |
 | Scope discipline | No claims beyond what the data and analysis support |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-phoenix | LLM observability traces keyed by run_id | mcp-phoenix | Local |
+
 ## Skills Used
 - **ARA Rigor Reviewer** — Seal Level 2 epistemic review. Applies structured provenance and rigor assessment to research artifacts.
 

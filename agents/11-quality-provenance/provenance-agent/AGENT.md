@@ -50,6 +50,13 @@ RFC 3161 timestamp (pre-registration steps)
 | Lab notebook entry | lab notebook | Append-only | Human-readable step record |
 | Pre-registration timestamp | docs/protocol/registration/ | RFC 3161 .tsr | SAP lock and hypothesis registration only |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **ARA Research Manager** — Post-task provenance recording per ARA specification. Manages research artifact lifecycle.
 - **ARA Compiler** — Initial ingestion and compilation of research artifacts with provenance metadata.

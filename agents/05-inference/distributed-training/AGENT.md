@@ -25,6 +25,13 @@ Most fine-tuning runs in HC-GRC are single-GPU LoRA jobs that the Fine-tuning Ag
 | Fine-tuning job requires > 1 GPU | VRAM requirement estimate exceeds device capacity | Fine-tuning Agent |
 | Post-training job requires multi-node | RL training scale exceeds single machine | Post-training Agent |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **Accelerate** — HuggingFace's distributed training abstraction. Preferred for LoRA/PEFT fine-tuning jobs across multiple GPUs.
 - **PyTorch Lightning** — Trainer abstraction for larger distributed jobs. Used when more granular control over training loop is needed.

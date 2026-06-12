@@ -32,6 +32,13 @@ Fine-tuning and post-training runs on local hardware face real memory and time c
 3. **Gradient checkpointing** — Recomputes activations on backward pass instead of storing. Reduces memory at ~30% compute cost.
 4. **Gradient accumulation** — Simulates larger batches without proportional memory increase.
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+
 ## Skills Used
 - **Flash Attention** — Memory-efficient attention kernels. Primary optimization for transformer training.
 - **bitsandbytes** — 8-bit Adam optimizer. Reduces optimizer state memory by 50%.

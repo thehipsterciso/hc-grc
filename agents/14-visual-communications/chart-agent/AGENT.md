@@ -50,6 +50,13 @@ Publication figures optimize for completeness — they show all the data, all th
 | Full confusion matrix | Single accuracy metric + directional bar |
 | Framework convergence heatmap | Top 5 highest/lowest convergence pairs |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: Visualization Agent (source figures), requesting dissemination agent
 **Passes to**: Business Presentation Agent, Whitepaper Agent, Brochure Agent, Branding Compliance Agent

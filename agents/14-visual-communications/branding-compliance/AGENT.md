@@ -59,6 +59,12 @@ Human distribution   Return to producing
 | Compliance log | lab notebook | Append-only | All reviews logged |
 | Remediation notes (on fail) | Producing agent | Markdown | Specific, actionable |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: Repo Documentation Agent (executive-mode content: OVERVIEW.md, RESEARCH_BRIEF.md, reports/executive-summary/), Business Presentation Agent, Whitepaper Agent, Brochure Agent, Social Media Agent, Chart Agent, Visualization Agent
 **Passes to**: Human (cleared for distribution)

@@ -57,6 +57,13 @@ GitHub push / PR event (GitHub Management Agent)
 | vex-update.yml | Schedule | VEX Agent |
 | dependency-audit.yml | Schedule | Dependency Management Agent |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-github | Repo operations — commit, branch, PR, issue | mcp-github | External — code/issues only, never SCF data |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: GitHub Management Agent (push events)
 **Passes to**: Code Review Agent (lint/security failures), SBOM Agent (generation triggers), VEX Agent (update triggers), Dependency Management Agent (audit failures), Orchestrator (critical pipeline failures)

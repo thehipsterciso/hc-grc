@@ -25,6 +25,13 @@ Writing a paper and submitting a paper are different tasks with different failur
 | Venue window open | Submission deadline within planning horizon |
 | Human approval received | Gate 4 passed — Orchestrator has authorized dissemination |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+
 ## Skills Used
 - **ML Paper Writing** — Venue-specific requirements, anonymization rules, supplementary material structure.
 

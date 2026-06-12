@@ -25,6 +25,13 @@ Academic papers are written for reviewers. Whitepapers are written for practitio
 | Practitioner-relevant findings | At least one P1–P5 finding with direct GRC application |
 | Target audience specified | Orchestrator or human reviewer designates practitioner output |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+
 ## Skills Used
 - **ML Paper Writing** — Structural guidance adapted for whitepaper format (executive summary, findings, recommendations, methodology appendix).
 

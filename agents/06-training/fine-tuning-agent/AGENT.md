@@ -41,6 +41,14 @@ General-purpose sentence-transformer models were not trained on security control
 | Training metrics | MLflow | JSON | Loss curve, eval metrics per checkpoint |
 | Fine-tuning report | Lab notebook | Markdown | Trigger reason, base model, config, eval metrics, improvement over baseline |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **PEFT** — LoRA and QLoRA adapters. Preferred for memory-efficient fine-tuning on Apple Silicon or single consumer GPU.
 - **Axolotl** — Fine-tuning framework with YAML-driven configuration. Used for full fine-tuning pipeline orchestration.

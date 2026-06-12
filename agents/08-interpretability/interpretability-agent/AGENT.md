@@ -27,6 +27,14 @@ Behavioral metrics — F1, accuracy, perplexity — tell you what a model does. 
 | Unexpected failure mode | QA Agent | Model fails specific control domain systematically |
 | Research question explicitly about model internals | Orchestrator | RQ about what SCF domain knowledge is encoded |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-phoenix | LLM observability traces keyed by run_id | mcp-phoenix | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+
 ## Skills Used
 - **TransformerLens** — Circuit analysis, activation patching, attention head analysis. Primary tool.
 - **SAELens** — Sparse Autoencoder training on model residuals. Identifies monosemantic features.

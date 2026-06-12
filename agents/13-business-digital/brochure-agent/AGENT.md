@@ -40,6 +40,13 @@ Some audiences require a two-minute read that either earns a longer conversation
 | Brochure / one-pager | reports/collateral/ (DVC) | Markdown → PDF | 1–2 pages |
 | Final branded PDF | reports/collateral/ (DVC) | PDF | After Branding Compliance review |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+
 ## Handoffs
 **Receives from**: Human reviewer (audience specification), Whitepaper Agent (findings input)
 **Passes to**: Branding Compliance Agent, Human distribution

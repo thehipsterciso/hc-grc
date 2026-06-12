@@ -72,6 +72,14 @@ Human review (for any ambiguous or restrictive findings)
 | Conflict findings | IP Attribution Agent | JSON | Components requiring action |
 | Quarterly audit report | reports/legal/ (DVC) | Markdown | Full audit with change log |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-github | Repo operations — commit, branch, PR, issue | mcp-github | External — code/issues only, never SCF data |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: SBOM Agent, Dependency Management Agent, Data Acquisition Agent
 **Passes to**: IP Attribution Agent (attribution requirements), Dependency Management Agent (license-conflicting deps), Human review (ambiguous or restrictive findings)
