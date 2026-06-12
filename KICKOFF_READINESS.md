@@ -110,6 +110,19 @@ subscription reasoning + gates as one working system. Everything after is breadt
 13. hypothesis-formalizer + statistical-analyst → Gate 2 firewall live
 14. Schema hygiene: 30 cards missing Tools sections; MCP registry; card validator
 
+**Context-persistence & Agent-Evolution loop** (spec done 2026-06-12; build pending)
+15. Orchestrator **run-start grounding**: load `PROJECT_STRUCTURE.md` at run start;
+    block artifact writes outside canonical locations; new top-level dir ⇒ ADR.
+    (Spec: orchestrator card v1.1.0 + `PROJECT_STRUCTURE.md`.) — *Build wires it*
+16. **Close the Agent-Evolution read-back loop**: the platform writes failures
+    (`INCIDENTS.md`, `failure_events`, `lab_notebook.md`) but does not yet *read*
+    them back. Build the pre-phase memory load (open incidents + adversarial
+    findings + recent failure_events → orchestrator context) so the platform
+    actually learns from its mistakes rather than only recording them.
+    (Spec: orchestrator card v1.1.0; ADR-0015 #72 is the design.) — *Build*
+17. Make adversarial findings a **living register** (extend `INCIDENTS.md` or add
+    `docs/decisions/ADVERSARIAL_FINDINGS.md`), content-addressed, consumed by #16.
+
 **P4 — deferred, NOT needed to kick off**
 Dissemination (team 12), business/digital (13), most of inference/training/
 optimization (05–08). Post-findings work; do not let it pull focus.
