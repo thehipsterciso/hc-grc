@@ -152,7 +152,10 @@ observability:
   # MLflow: local experiment tracking
   mlflow:
     enabled: true
-    tracking_uri: "mlruns"  # local directory; no remote server
+    # Local SQLite backend — single file on the compute node, no remote server.
+    # (MLflow 3 deprecated the legacy "mlruns/" file store.) Relative path is
+    # resolved to an absolute path under the repo root by mlflow_setup.py.
+    tracking_uri: "sqlite:///mlflow.db"
     experiment_name: hc-grc
 
 # ── Provenance ────────────────────────────────────────────────────────────────
