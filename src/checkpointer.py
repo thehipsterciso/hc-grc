@@ -57,18 +57,33 @@ def get_checkpointer(use_memory: bool = False):
 
     try:
         from langgraph.checkpoint.postgres import PostgresSaver
-        conn_str = get_postgres_connection_string()
-        checkpointer = PostgresSaver.from_conn_string(conn_str)
-        checkpointer.setup()  # creates tables if they don't exist
-        return checkpointer
-    except ImportError:
+        from psycopg import Connection
+        from psycopg.rows import dict_row
+    except ImportError as e:
         raise ImportError(
-            "langgraph-checkpoint-postgres is required for PostgresSaver. "
-            "Run: pip install langgraph-checkpoint-postgres"
+            "langgraph-checkpoint-postgres and psycopg are required for PostgresSaver. "
+            "Run: pip install 'langgraph-checkpoint-postgres' 'psycopg[binary,pool]'"
+        ) from e
+
+    conn_str = get_postgres_connection_string()
+    try:
+        # PostgresSaver.from_conn_string is a @contextmanager that closes the
+        # connection on exit — unsuitable for a factory that returns a long-lived
+        # saver. Open a persistent connection configured exactly as PostgresSaver
+        # requires (autocommit, no prepared-statement threshold, dict rows) and
+        # hand it to the saver directly. The connection lives for the process.
+        conn = Connection.connect(
+            conn_str,
+            autocommit=True,
+            prepare_threshold=0,
+            row_factory=dict_row,
         )
+        checkpointer = PostgresSaver(conn)
+        checkpointer.setup()  # creates checkpoint tables if they don't exist
+        return checkpointer
     except Exception as e:
         raise RuntimeError(
-            f"PostgresSaver connection failed. Is Postgres running on localhost:5432/hcgrc? "
+            f"PostgresSaver connection failed. Is Postgres running on {conn_str}? "
             f"Error: {e}\n"
             "For Phase 0 testing without Postgres, use get_checkpointer(use_memory=True)."
         ) from e
