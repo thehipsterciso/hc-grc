@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..grounding import ground_orchestrator
 from ..state import HCGRCState
 
 
@@ -74,8 +75,14 @@ def t00_orchestrator_node(state: HCGRCState) -> dict[str, Any]:
     Phase 0: minimal pass-through that records entry into orchestration.
     Phase 1+: Agent Evolution will optimize this node's routing logic.
 
+    Run-start grounding (#125/#126): loads the canonical repo structure and
+    institutional memory (open incidents, recent failure_events, the adversarial-
+    findings register) so routing decisions and artifact paths do not depend on a
+    degrading context window. The grounding summary is recorded in provenance.
+
     Does not modify gate_status (only GateCoordinatorNode may do that).
     """
+    grounding = ground_orchestrator(state)
     return {
         "prov_activities": [
             {
@@ -83,6 +90,7 @@ def t00_orchestrator_node(state: HCGRCState) -> dict[str, Any]:
                 "run_id": state.get("run_id"),
                 "phase": state.get("phase"),
                 "note": "Phase 0 minimal orchestrator — routing skeleton",
+                "grounding": grounding,
             }
         ]
     }
