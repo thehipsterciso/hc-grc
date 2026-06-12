@@ -18,9 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from ..base import BasePipelineAgent, SAPViolation
 from ...state import HCGRCState
-
+from ..base import BasePipelineAgent, SAPViolationError
 
 # ── Result types ──────────────────────────────────────────────────────────────
 
@@ -123,7 +122,7 @@ class DataStewardAgent(BasePipelineAgent):
         must complete before the test split is unlocked. This is the mechanism
         that prevents confirmatory tests from inadvertently contaminating EDA.
 
-        Raises SAPViolation if:
+        Raises SAPViolationError if:
           - test split requested before Gate 2 (SAP lock)
           - test split requested before Gate 3 (EDA review)
 
@@ -134,7 +133,7 @@ class DataStewardAgent(BasePipelineAgent):
 
             gate_2 = gate_status.get("gate_2", {})
             if gate_2.get("decision") != "approved":
-                raise SAPViolation(
+                raise SAPViolationError(
                     "Test split access attempted before Gate 2 (SAP lock). "
                     "Gate 2 must be approved before test split is available. "
                     f"Current gate_2 decision: {gate_2.get('decision', 'not_run')}. "
@@ -143,7 +142,7 @@ class DataStewardAgent(BasePipelineAgent):
 
             gate_3 = gate_status.get("gate_3", {})
             if gate_3.get("decision") != "approved":
-                raise SAPViolation(
+                raise SAPViolationError(
                     "Test split access attempted before Gate 3 (EDA review complete). "
                     "Both Gate 2 (SAP lock) AND Gate 3 (EDA review) must be approved "
                     "before the test split is unlocked. "

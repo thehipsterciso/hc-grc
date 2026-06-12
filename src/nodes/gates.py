@@ -25,7 +25,6 @@ from langgraph.types import interrupt
 
 from ..state import HCGRCState
 
-
 # ── Shared helpers ────────────────────────────────────────────────────────────
 
 

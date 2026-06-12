@@ -32,7 +32,6 @@ from typing import Any, Literal
 
 from ..state import HCGRCState
 
-
 # ── Shared input types ────────────────────────────────────────────────────────
 
 class STRMMapping:
@@ -94,14 +93,14 @@ class ControlMetadata:
 
 # ── Phase guard ───────────────────────────────────────────────────────────────
 
-class SAPViolation(Exception):
+class SAPViolationError(Exception):
     """Raised when an agent attempts to access test data before Gate 2."""
     pass
 
 
 def assert_gate2_approved(state: HCGRCState) -> None:
     """
-    Raise SAPViolation if Gate 2 has not been approved.
+    Raise SAPViolationError if Gate 2 has not been approved.
 
     Must be called before any agent accesses test_ids or test split data.
     This is the primary enforcement mechanism for the pre-registration firewall.
@@ -109,7 +108,7 @@ def assert_gate2_approved(state: HCGRCState) -> None:
     gate_status = state.get("gate_status", {})
     gate_2 = gate_status.get("gate_2")
     if gate_2 is None or gate_2.get("decision") != "approved":
-        raise SAPViolation(
+        raise SAPViolationError(
             "Attempted to access test split before Gate 2 approval. "
             "This is a SAP violation. Gate 2 status: "
             f"{gate_2.get('decision') if gate_2 else 'not_run'}. "

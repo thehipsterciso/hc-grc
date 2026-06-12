@@ -36,8 +36,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..base import BaseResearchAgent
 from ...state import HCGRCState
+from ..base import BaseResearchAgent
 
 # Coverage density threshold below which a risk category is a "blindspot"
 # Pre-registered value — do not change after Gate 2

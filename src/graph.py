@@ -49,7 +49,6 @@ from .nodes.phase1 import (
 )
 from .state import HCGRCState, initial_state
 
-
 # ── Graph builder ─────────────────────────────────────────────────────────────
 
 def build_graph(checkpointer=None) -> StateGraph:

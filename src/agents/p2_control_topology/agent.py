@@ -34,8 +34,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..base import BaseResearchAgent
 from ...state import HCGRCState
+from ..base import BaseResearchAgent
 
 
 class P2ControlTopologyAgent(BaseResearchAgent):

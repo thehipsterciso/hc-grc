@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import uuid
 from typing import Annotated, Any, Literal
-from typing_extensions import TypedDict
 
 from langgraph.graph.message import add_messages
-
+from typing_extensions import TypedDict
 
 # ── Phase labels ────────────────────────────────────────────────────────────
 

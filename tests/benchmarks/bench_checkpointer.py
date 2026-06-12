@@ -33,7 +33,6 @@ from src.checkpointer import get_checkpointer
 from src.graph import build_graph
 from src.state import initial_state
 
-
 # ── Benchmark parameters ──────────────────────────────────────────────────────
 
 N_RUNS = 20            # Number of graph runs (each = one write + one read cycle)

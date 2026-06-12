@@ -1,3 +1,3 @@
-from .agent import DataCurationAgent, CurationReport
+from .agent import CurationReport, DataCurationAgent
 
 __all__ = ["DataCurationAgent", "CurationReport"]

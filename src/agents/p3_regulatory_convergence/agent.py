@@ -37,8 +37,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from ..base import BaseResearchAgent
 from ...state import HCGRCState
+from ..base import BaseResearchAgent
 
 # Convergence classification types
 ConvergenceType = Literal["genuine", "terminological", "structural", "nist_cluster_internal"]

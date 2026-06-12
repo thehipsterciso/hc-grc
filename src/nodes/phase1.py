@@ -41,15 +41,14 @@ from ..agents import (
     DataCurationAgent,
     DataStewardAgent,
     EmbeddingAgent,
+    HypothesisFormalizerAgent,
     P1StrmNlpAgent,
     P2ControlTopologyAgent,
     P3RegulatoryConvergenceAgent,
     P4RiskBlindspotAgent,
     P5AiGovernanceAgent,
-    HypothesisFormalizerAgent,
 )
 from ..state import HCGRCState
-
 
 # ── Agent singletons ──────────────────────────────────────────────────────────
 # Created once at module load; nodes call instance methods.

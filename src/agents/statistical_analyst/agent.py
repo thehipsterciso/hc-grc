@@ -41,8 +41,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from ..base import BaseResearchAgent, SAPViolation, assert_gate2_approved
 from ...state import HCGRCState
+from ..base import BaseResearchAgent, SAPViolationError
 
 
 class SAPComplianceError(Exception):
@@ -75,7 +75,7 @@ class StatisticalAnalystAgent(BaseResearchAgent):
     """
     Confirmatory statistical testing agent.
 
-    Does not run in exploratory phase — raises SAPViolation if called before Gate 2.
+    Does not run in exploratory phase — raises SAPViolationError if called before Gate 2.
     All tests are pre-specified in the SAP. Any deviation is a SAP violation.
     """
 
@@ -94,9 +94,9 @@ class StatisticalAnalystAgent(BaseResearchAgent):
         """
         Statistical Analyst does not run in exploratory phase.
 
-        Raises SAPViolation — confirmatory testing before Gate 2 is a protocol violation.
+        Raises SAPViolationError — confirmatory testing before Gate 2 is a protocol violation.
         """
-        raise SAPViolation(
+        raise SAPViolationError(
             "Statistical Analyst may not run before Gate 2 approval. "
             "Confirmatory testing before the exploratory/confirmatory split is locked "
             "constitutes pre-testing and invalidates the confirmatory analysis. "
