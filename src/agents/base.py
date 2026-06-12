@@ -170,3 +170,36 @@ class BaseResearchAgent(ABC):
           #             effect_size_threshold=[value], decision_rule=[criterion]
         """
         ...
+
+
+# ── Base pipeline agent ───────────────────────────────────────────────────────
+
+class BasePipelineAgent(ABC):
+    """
+    Abstract base for data pipeline agents (acquisition, curation, steward, embedding).
+
+    Pipeline agents prepare and version the research corpus. They do not perform
+    exploratory or confirmatory analysis — they have no run_exploratory() /
+    run_confirmatory() distinction. They run once at project initialization and
+    re-run when the SCF corpus is updated.
+
+    Pipeline agents are never PROTECTED — they contain no analysis logic that
+    could affect research conclusions. Agent Evolution may modify them without
+    Escalation approval.
+
+    The run() return dict is a partial HCGRCState update, merged by the graph runtime.
+    Agents must never mutate state in place.
+    """
+
+    AGENT_ID: str = ""     # kebab-case, matches AGENT.md name field
+    PROTECTED: bool = False  # never True for pipeline agents
+
+    @abstractmethod
+    def run(self, state: HCGRCState) -> dict[str, Any]:
+        """
+        Execute the pipeline stage and return a partial HCGRCState update.
+
+        Raises NotImplementedError until the real SCF data pipeline is live
+        on the Mac mini with DVC and Qdrant configured.
+        """
+        ...

@@ -75,6 +75,31 @@ class HCGRCState(TypedDict):
     data_split_seed: int | None  # derived from manifest hash (int.from_bytes)
     data_split_verified: bool  # True after idempotency assertion passes
 
+    # ── Phase 1 execution tracking ────────────────────────────────────────────
+    # phase_1_ready: True after data pipeline writes validated splits to disk.
+    # exploratory_complete: True after all P1-P5 nodes complete (or graceful stub).
+    phase_1_ready: bool
+    exploratory_complete: bool
+
+    # ── Data pipeline provenance ──────────────────────────────────────────────
+    # Written by EmbeddingAgent after embedding run completes. Required at Gate 2
+    # to confirm which model produced the embeddings used in exploratory analysis.
+    # Keys: model_name, model_hash, corpus_dvc_hash, timestamp_utc
+    embedding_manifest: dict[str, Any] | None
+
+    # ── Exploratory analysis artifacts (append-only) ──────────────────────────
+    # eda_artifacts: file paths to all EXP_* outputs from P1-P5 nodes.
+    # Each node appends its artifact paths. Gate 3 verifies all 5 agents present.
+    # eda_agent_statuses: per-agent completion records.
+    # Keys: agent_id, status ("completed"|"stub_pending"|"failed"), note, timestamp_utc
+    eda_artifacts: Annotated[list[str], lambda a, b: a + b]
+    eda_agent_statuses: Annotated[list[dict[str, Any]], lambda a, b: a + b]
+
+    # ── Formalized hypothesis set (append-only) ───────────────────────────────
+    # Written by HypothesisFormalizerAgent before Gate 2.
+    # Each entry is a FormalHypothesis dict (see src/agents/hypothesis_formalizer).
+    hypothesis_set: Annotated[list[dict[str, Any]], lambda a, b: a + b]
+
     # ── Escalation ────────────────────────────────────────────────────────────
     escalation_issue_number: int | None  # GitHub issue number if parked
     escalation_reason: str | None
@@ -100,6 +125,12 @@ def initial_state(run_id: str | None = None) -> HCGRCState:
         data_split_manifest_hash=None,
         data_split_seed=None,
         data_split_verified=False,
+        phase_1_ready=False,
+        exploratory_complete=False,
+        embedding_manifest=None,
+        eda_artifacts=[],
+        eda_agent_statuses=[],
+        hypothesis_set=[],
         escalation_issue_number=None,
         escalation_reason=None,
         messages=[],

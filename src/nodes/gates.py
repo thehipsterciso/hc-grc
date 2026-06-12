@@ -200,44 +200,159 @@ def gate_2_node(state: HCGRCState) -> dict[str, Any]:
     return update
 
 
-# ── Gates 3–5 (stubs — fully specified in later phases) ──────────────────────
+# ── Gate 3 ────────────────────────────────────────────────────────────────────
 
 
 def gate_3_node(state: HCGRCState) -> dict[str, Any]:
-    """Gate 3 — Finding significance review (Phase 2, pre-publication)."""
+    """
+    Gate 3 — EDA findings review before confirmatory phase begins.
+
+    Fires after HypothesisFormalizerAgent completes. The operator reviews
+    P1-P5 exploratory outputs and the formalized hypothesis set before any
+    confirmatory test runs. Approving this gate:
+      - Unlocks the test split (in addition to Gate 2 — DataStewardAgent
+        requires BOTH gate_2 AND gate_3 approved before test split access)
+      - Confirms that DIVERGENCE-01 operationalization is final
+      - Confirms the hypothesis set is complete for pre-registration
+
+    Hard prerequisite: exploratory_complete must be True (or all agents
+    in stub_pending status is acceptable for a governance dry-run).
+    """
+    checklist = [
+        # ── P1-P5 artifact presence ────────────────────────────────────────────
+        "P1 (STRM NLP): EXP_P1_similarity.parquet and EXP_P1_disagreements.md present and reviewed",
+        "P1: Model F1 scores on STRM classification recorded for all 5 LEDGER-0002 candidates",
+        "P2 (Control Topology): EXP_P2_graph.graphml, topology.parquet, communities.parquet reviewed",
+        "P2: NIST cluster constraint verified — NIST 800-53, CSF, 800-171 treated as ONE "
+        "evidence source (not 3 independent NIST findings)",
+        "P3 (Regulatory Convergence): EXP_P3_convergence.parquet and atlas.json reviewed — "
+        "ConvergenceType distribution examined",
+        "P4 (Risk Blindspot): EXP_P4_blindspots.json reviewed — false coverage cases "
+        "excluded (controls without STRM mappings excluded from blindspot claims)",
+        "P5 (AI Governance): EXP_P5_taxonomy_comparison.md reviewed — UMAP parameters "
+        "confirmed consistent with SAP pre-registration",
+        # ── Model designation ──────────────────────────────────────────────────
+        "Primary embedding model designated from LEDGER-0002 candidates based on Phase 1 F1 scores",
+        "Primary model designation and all secondary/sensitivity models logged to "
+        "Preregistration Ledger before this gate approves",
+        "If best model F1 < 0.70: domain fine-tuning triggered via Team 06 and approved "
+        "before proceeding — do not approve Gate 3 with an F1 below threshold",
+        # ── SAP lock prerequisites ─────────────────────────────────────────────
+        "DIVERGENCE-01 operationalization finalized and logged to Preregistration Ledger — "
+        "this decision requires STRM label distribution from EDA (now available)",
+        "Hypothesis set reviewed — all H[module].[n] IDs assigned with null hypothesis, "
+        "named test, effect size threshold, and decision rule",
+        "Effect size thresholds are grounded in domain literature — not selected to "
+        "match the EDA distribution (that would be HARKing)",
+        "HARKing check: no hypothesis was added to the set after P1-P5 outputs were reviewed "
+        "unless it was pre-specified in methods scaffolding",
+        # ── Test split integrity ───────────────────────────────────────────────
+        "No analysis agent has received test split paths — all EDA artifacts reference "
+        "train/val splits only. Test split data_steward access log shows zero test reads",
+        "Data split seed hash unchanged since Gate 2",
+        # ── License compliance ─────────────────────────────────────────────────
+        "No SCF-derived embeddings, derived datasets, or analysis results have left the machine",
+    ]
+
     proposal = _build_gate_proposal(
         gate_id="gate_3",
-        title="Gate 3 — Finding Significance Review",
-        summary="Confirmatory analysis complete. Review findings before publication pipeline.",
-        checklist=["[To be specified at Phase 2 design]"],
+        title="Gate 3 — EDA Findings Review",
+        summary=(
+            "Exploratory analysis is complete. P1-P5 have produced their EXP_ artifact sets. "
+            "Hypotheses are formalized. Approving this gate unlocks the test split and "
+            "confirms the hypothesis set for pre-registration. "
+            "This is the last human checkpoint before any confirmatory tests run."
+        ),
+        checklist=checklist,
         run_id=state["run_id"],
     )
+
     operator_response: dict[str, Any] = interrupt(proposal)
     decision = operator_response.get("decision", "rejected")
-    rationale = operator_response.get("rationale", "")
+    rationale = operator_response.get("rationale", "No rationale provided.")
+
     update: dict[str, Any] = {}
     if decision != "approved":
         update["failure_events"] = [_rejection_event("gate_3", rationale, state["run_id"])]
+
     from .gate_coordinator import gate_coordinator_node
     update.update(gate_coordinator_node(state, "gate_3", decision, rationale))
     return update
 
 
+# ── Gate 4 ────────────────────────────────────────────────────────────────────
+
+
 def gate_4_node(state: HCGRCState) -> dict[str, Any]:
-    """Gate 4 — Manuscript submission approval."""
+    """
+    Gate 4 — Confirmatory results review before reporting begins.
+
+    Fires after all confirmatory analyses complete (P1-P5 confirmatory runs +
+    StatisticalAnalystAgent). The operator reviews statistical results before
+    any output enters the reporting or dissemination pipeline.
+
+    Approving this gate:
+      - Authorizes Repo Documentation Agent to write executive-mode finding summaries
+      - Triggers the Branding Compliance Agent review for any executive content
+      - Unlocks the Reporter Agent to begin manuscript preparation
+
+    This gate prevents premature disclosure of unreviewed statistical results.
+    """
+    checklist = [
+        # ── Confirmatory analysis completeness ────────────────────────────────
+        "All pre-registered H[module].[n] hypotheses have decision records: "
+        "'reject null' or 'fail to reject null' — no hypothesis left undecided",
+        "StatisticalAnalystAgent has produced ConfirmatoryResult records for all hypotheses — "
+        "p_value, effect_size, ci_lower, ci_upper, n_obs, corrected_p_value present",
+        # ── Statistical rigor ─────────────────────────────────────────────────
+        "Multiple comparison correction applied per SAP Section 6 — corrected_p_value "
+        "values present and correction method matches SAP specification",
+        "Effect sizes with confidence intervals reported for all significant findings",
+        "Pre-specified sensitivity analyses complete and results recorded",
+        "No post-hoc test additions — all tests match the pre-registered SAP exactly. "
+        "Any deviation is a SAP amendment requiring separate LEDGER entry",
+        # ── Null result integrity ──────────────────────────────────────────────
+        "Null results documented with same level of detail as significant results — "
+        "failing to reject null is a finding, not a non-finding",
+        "Selective reporting check: number of decision records == number of "
+        "pre-registered hypotheses (no cherry-picking)",
+        # ── Methodological constraints ─────────────────────────────────────────
+        "NIST cluster constraint respected in all findings — NIST 800-53, CSF, "
+        "800-171 share one authorship source (not counted as independent validation)",
+        "STRM reliability limitation disclosed in all finding summaries — "
+        "per LEDGER-0003 (Path 2): interpretation pathway 'annotator inconsistency' "
+        "is UNAVAILABLE; only 'quantified divergence exists' interpretation is available",
+        "DIVERGENCE-01 operationalization matches the version logged to Preregistration Ledger",
+        # ── Data and license compliance ────────────────────────────────────────
+        "No SCF-derived data in any external-facing artifact (CC BY-ND 4.0)",
+        "All statistical outputs reference data/splits/test/ DVC hash — "
+        "confirms correct test set was used (seed_hash unchanged from Gate 2)",
+        # ── Documentation triggers ─────────────────────────────────────────────
+        "Orchestrator has triggered Repo Documentation Agent for finding documentation "
+        "and executive summary preparation",
+        "Branding Compliance Agent review queued for any executive-mode content",
+    ]
+
     proposal = _build_gate_proposal(
         gate_id="gate_4",
-        title="Gate 4 — Manuscript Submission Approval",
-        summary="Manuscript ready for submission. Final operator review required.",
-        checklist=["[To be specified at Phase 2 design]"],
+        title="Gate 4 — Confirmatory Results Review",
+        summary=(
+            "Confirmatory analysis is complete. All pre-registered hypotheses have decisions. "
+            "Statistical results are ready for operator review before entering the reporting pipeline. "
+            "Approving this gate authorizes executive-mode documentation and manuscript preparation."
+        ),
+        checklist=checklist,
         run_id=state["run_id"],
     )
+
     operator_response: dict[str, Any] = interrupt(proposal)
     decision = operator_response.get("decision", "rejected")
-    rationale = operator_response.get("rationale", "")
+    rationale = operator_response.get("rationale", "No rationale provided.")
+
     update: dict[str, Any] = {}
     if decision != "approved":
         update["failure_events"] = [_rejection_event("gate_4", rationale, state["run_id"])]
+
     from .gate_coordinator import gate_coordinator_node
     update.update(gate_coordinator_node(state, "gate_4", decision, rationale))
     return update

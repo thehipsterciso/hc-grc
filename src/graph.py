@@ -1,16 +1,32 @@
 """
-HC-GRC main LangGraph graph — Phase 0 skeleton.
+HC-GRC main LangGraph graph — Phase 0 + Phase 1 exploratory subgraph.
 
-Graph topology (Phase 0):
-  orchestrator → data_split → gate_1 → [approved: phase_1_entry | else: END]
+Graph topology (Phase 0 + Phase 1):
+
+  orchestrator
+      ↓
+  data_split          ← SHA-256 seeded 70/15/15 split (synthetic in Phase 0)
+      ↓
+  gate_1              ← interrupt() — pre-data checkpoint
+      ↓ [approved]
+  data_pipeline       ← DataAcquisitionAgent → DataCurationAgent
+      ↓                  → DataStewardAgent → EmbeddingAgent
+  exploratory_phase   ← P1 → P2 → P3 → P4 → P5 (sequential; TODO: Send() fan-out)
+      ↓
+  hypothesis_formalize ← HypothesisFormalizerAgent
+      ↓
+  gate_2              ← interrupt() — SAP lock, hypothesis pre-registration
+      ↓ [approved]
+  confirmatory_entry  ← Phase 2 stub (route_after_gate_2 → "confirmatory_entry")
+      ↓ [rejected]
+  exploratory_phase   ← loop back to re-run EDA with revised hypotheses
+
+  gate_3, gate_4, gate_5 are Phase 2 mechanism work — nodes registered here
+  so routing functions can reference them, but edges from confirmatory subgraph
+  are deferred.
 
 Gate nodes use interrupt() to surface proposals to the operator.
 All gate decisions are written by gate_coordinator (serialized, no concurrent writes).
-
-Phase 1 additions (not here yet):
-  - Exploratory analysis subgraph (P1-P5 agents in parallel)
-  - Agent Evolution loop monitoring failure_events
-  - gate_2 → confirmatory subgraph
 
 Per ADR-0015: run_id propagates through thread_config to PostgresSaver
 and to all four observability stores.
@@ -23,25 +39,15 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 
 from .nodes.data_split import data_split_node
-from .nodes.gates import gate_1_node
-from .nodes.orchestrator import route_after_gate_1, t00_orchestrator_node
+from .nodes.gates import gate_1_node, gate_2_node, gate_3_node, gate_4_node, gate_5_node
+from .nodes.orchestrator import route_after_gate_1, route_after_gate_2, t00_orchestrator_node
+from .nodes.phase1 import (
+    confirmatory_entry_node,
+    data_pipeline_node,
+    exploratory_phase_node,
+    hypothesis_formalize_node,
+)
 from .state import HCGRCState, initial_state
-
-
-# ── Placeholder nodes (Phase 1+) ─────────────────────────────────────────────
-
-def phase_1_entry_node(state: HCGRCState) -> dict[str, Any]:
-    """Placeholder: Phase 1 exploratory analysis entry point."""
-    return {
-        "phase": "phase_1",
-        "prov_activities": [
-            {
-                "activity": "phase_1_entry",
-                "run_id": state["run_id"],
-                "note": "Phase 1 not yet implemented — stub node",
-            }
-        ],
-    }
 
 
 # ── Graph builder ─────────────────────────────────────────────────────────────
@@ -51,8 +57,8 @@ def build_graph(checkpointer=None) -> StateGraph:
     Build and compile the HC-GRC LangGraph graph.
 
     Args:
-        checkpointer: LangGraph checkpointer (MemorySaver for Phase 0,
-                      PostgresSaver for Phase 1+). If None, graph runs
+        checkpointer: LangGraph checkpointer (MemorySaver for Phase 0/1,
+                      PostgresSaver for production). If None, graph runs
                       without persistence (stateless — for unit tests only).
 
     Returns:
@@ -60,36 +66,70 @@ def build_graph(checkpointer=None) -> StateGraph:
     """
     builder = StateGraph(HCGRCState)
 
-    # ── Nodes ─────────────────────────────────────────────────────────────────
+    # ── Phase 0 nodes ─────────────────────────────────────────────────────────
     builder.add_node("orchestrator", t00_orchestrator_node)
 
     # data_split_node needs synthetic_control_ids in Phase 0.
-    # Wrap it to pass synthetic IDs if no manifest is present.
+    # In Phase 1, DataStewardAgent writes real splits to disk.
+    # Phase 0 wrapper: synthetic IDs matching SCF scale for gate dry-runs.
     def _data_split_phase0(state: HCGRCState) -> dict[str, Any]:
-        # Phase 0: use 1,400 synthetic control IDs matching SCF scale
         synthetic_ids = [f"SCF-CTRL-{i:04d}" for i in range(1400)]
         return data_split_node(state, synthetic_control_ids=synthetic_ids)
 
     builder.add_node("data_split", _data_split_phase0)
     builder.add_node("gate_1", gate_1_node)
-    builder.add_node("phase_1_entry", phase_1_entry_node)
 
-    # ── Edges ─────────────────────────────────────────────────────────────────
+    # ── Phase 1 nodes ─────────────────────────────────────────────────────────
+    builder.add_node("data_pipeline", data_pipeline_node)
+    builder.add_node("exploratory_phase", exploratory_phase_node)
+    builder.add_node("hypothesis_formalize", hypothesis_formalize_node)
+    builder.add_node("gate_2", gate_2_node)
+
+    # ── Phase 2 stubs (nodes registered; edges from confirmatory subgraph deferred) ──
+    builder.add_node("confirmatory_entry", confirmatory_entry_node)
+    builder.add_node("gate_3", gate_3_node)
+    builder.add_node("gate_4", gate_4_node)
+    builder.add_node("gate_5", gate_5_node)
+
+    # ── Edges — Phase 0 ───────────────────────────────────────────────────────
     builder.set_entry_point("orchestrator")
     builder.add_edge("orchestrator", "data_split")
     builder.add_edge("data_split", "gate_1")
 
-    # Conditional routing after Gate 1
     builder.add_conditional_edges(
         "gate_1",
         route_after_gate_1,
         {
-            "phase_1_entry": "phase_1_entry",
+            "phase_1_entry": "data_pipeline",  # approved → Phase 1 data pipeline
             "end": END,
         },
     )
 
-    builder.add_edge("phase_1_entry", END)
+    # ── Edges — Phase 1 exploratory ───────────────────────────────────────────
+    builder.add_edge("data_pipeline", "exploratory_phase")
+    builder.add_edge("exploratory_phase", "hypothesis_formalize")
+    builder.add_edge("hypothesis_formalize", "gate_2")
+
+    builder.add_conditional_edges(
+        "gate_2",
+        route_after_gate_2,
+        {
+            "confirmatory_entry": "confirmatory_entry",  # approved → Phase 2
+            "exploratory_entry": "exploratory_phase",    # rejected → re-run EDA
+            "end": END,                                   # deferred → park
+        },
+    )
+
+    # ── Phase 2 stub edges ────────────────────────────────────────────────────
+    # confirmatory_entry → gate_3 → gate_4 → gate_5 will be wired in Phase 2.
+    # For now, confirmatory_entry routes to END so the graph compiles.
+    builder.add_edge("confirmatory_entry", END)
+
+    # gate_3, gate_4, gate_5 are reachable (registered) but not yet wired
+    # into the confirmatory subgraph. They connect to END to keep graph valid.
+    builder.add_edge("gate_3", END)
+    builder.add_edge("gate_4", END)
+    builder.add_edge("gate_5", END)
 
     # ── Compile ───────────────────────────────────────────────────────────────
     compile_kwargs: dict[str, Any] = {}
@@ -99,7 +139,7 @@ def build_graph(checkpointer=None) -> StateGraph:
     return builder.compile(**compile_kwargs)
 
 
-# ── Convenience runner ────────────────────────────────────────────────────────
+# ── Convenience runners ───────────────────────────────────────────────────────
 
 def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[str, Any]:
     """
@@ -110,6 +150,21 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
 
     For tests that need to skip the interrupt, use the graph's
     .invoke() with a pre-configured Command resume.
+    """
+    graph = build_graph(checkpointer=checkpointer)
+    state = initial_state(run_id=run_id)
+    thread_config = {"configurable": {"thread_id": state["run_id"]}}
+    result = graph.invoke(state, config=thread_config)
+    return result
+
+
+def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str, Any]:
+    """
+    Execute a Phase 1 dry run through Gate 2.
+
+    Gate 1 and Gate 2 will pause for operator input. Data pipeline and P1-P5
+    nodes will record stub_pending statuses (NotImplementedError caught). This
+    verifies the Phase 1 graph topology before real SCF data is loaded.
     """
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
