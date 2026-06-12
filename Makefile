@@ -5,7 +5,7 @@ PY     := $(VENV)/bin/python
 
 .DEFAULT_GOAL := help
 
-.PHONY: help venv install test lint format clean acquire eda reproduce check-docs
+.PHONY: help venv install test lint format clean acquire eda reproduce check-docs hooks
 
 help:
 	@echo "Available targets:"
@@ -18,6 +18,8 @@ help:
 	@echo "  acquire     Run data acquisition scripts"
 	@echo "  eda         Run EDA notebook"
 	@echo "  reproduce   Full pipeline: acquire → process → analyze"
+	@echo "  check-docs  Factual doc audit + drift advisory"
+	@echo "  hooks       Install local pre-commit hooks (factual doc audit every commit)"
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -54,7 +56,14 @@ reproduce: acquire
 	@echo "Reproduce complete. Check reports/ for outputs."
 
 check-docs:
-	@echo "Running documentation drift check against working tree changes..."
+	@echo "Factual documentation audit (agent count, ADR index)..."
+	@python3 scripts/check_doc_drift.py --factual
+	@echo "Drift advisory against working-tree changes..."
 	@git diff --name-only origin/main...HEAD > /tmp/changed_files.txt 2>/dev/null || \
 		git diff --name-only HEAD > /tmp/changed_files.txt
 	@CHANGED_FILES_PATH=/tmp/changed_files.txt python3 scripts/check_doc_drift.py
+
+hooks:
+	@command -v pre-commit >/dev/null 2>&1 || { echo "pre-commit not found — run: pip install pre-commit"; exit 1; }
+	pre-commit install
+	@echo "Hooks installed. Factual doc audit runs on every commit."

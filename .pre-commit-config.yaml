@@ -1,0 +1,13 @@
+# Local pre-commit hooks. Install once: `make hooks` (or `pre-commit install`).
+# The factual documentation audit then runs on EVERY commit, blocking commits
+# that leave stated facts (agent count, ADR index) out of sync with the repo.
+# CI enforces the same check on every PR via .github/workflows/docs-sync.yml.
+repos:
+  - repo: local
+    hooks:
+      - id: doc-drift-factual
+        name: doc drift — factual audit (agent count, ADR index)
+        entry: python3 scripts/check_doc_drift.py --factual
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -3,7 +3,7 @@
 **Version:** 1.0.0
 **Status:** Locked
 
-This document is the authoritative specification for all AGENT.md cards in the HC-GRC agent library. The 48 cards in `agents/**/AGENT.md` are instances of this schema. A Pydantic validator runs against this spec on pre-commit and in CI. Any frontmatter field change on an existing card is a version bump. Any body section change that alters an agent's behavioral constraints or handoffs requires a version bump and a lab notebook entry.
+This document is the authoritative specification for all AGENT.md cards in the HC-GRC agent library. The 50 cards in `agents/**/AGENT.md` are instances of this schema. A Pydantic validator runs against this spec on pre-commit and in CI. Any frontmatter field change on an existing card is a version bump. Any body section change that alters an agent's behavioral constraints or handoffs requires a version bump and a lab notebook entry.
 
 The cards are the single source of truth for the following auto-generated documents. Do not author these manually — they drift:
 - `HANDOFFS.md` — derived from all "Receives from" / "Passes to" sections
