@@ -1,14 +1,14 @@
 ---
 name: orchestrator
 description: Manages the full HC-GRC research lifecycle. Routes work to specialist agents, enforces five human approval gates via LangGraph interrupt nodes, maintains shared research state, and prevents any confirmatory analysis from running without a locked SAP. Grounds itself in the canonical repo structure and institutional memory at run start so routing never depends on degrading context. The central nervous system of the platform — nothing moves without passing through it.
-version: 1.1.1
+version: 1.1.2
 team: 00-orchestration
 status: primary
 trigger: always
 author: HC-GRC
 tags: [Orchestration, LangGraph, Research Lifecycle, Human-in-the-Loop, SAP Enforcement]
 skills: [autoresearch, langchain, dspy, instructor]
-tools: [langgraph-checkpointer, mcp-sap-validator, mcp-lab-notebook, mcp-mlflow, mcp-qdrant]
+tools: [mcp-langgraph, mcp-sap-validator, mcp-lab-notebook, mcp-mlflow, mcp-qdrant]
 ---
 
 # Orchestrator
