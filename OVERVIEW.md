@@ -98,6 +98,8 @@ Data acquisition begins when compute infrastructure is provisioned. Analysis fol
 
 Findings will be published here, in academic journals, and through [The Hipster CISO](https://thehipsterciso.substack.com) in practitioner-accessible form as they emerge.
 
+For diligence conversations or to be notified when findings publish: [thehipsterciso@protonmail.com](mailto:thehipsterciso@protonmail.com)
+
 ---
 
 *Technical readers: [README.md](README.md) has the architecture, agent design, research protocol, and implementation detail.*

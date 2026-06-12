@@ -5,7 +5,7 @@ PY     := $(VENV)/bin/python
 
 .DEFAULT_GOAL := help
 
-.PHONY: help venv install test lint format clean acquire eda reproduce
+.PHONY: help venv install test lint format clean acquire eda reproduce check-docs
 
 help:
 	@echo "Available targets:"
@@ -52,3 +52,9 @@ reproduce: acquire
 	$(PY) src/data/process.py
 	$(MAKE) eda
 	@echo "Reproduce complete. Check reports/ for outputs."
+
+check-docs:
+	@echo "Running documentation drift check against working tree changes..."
+	@git diff --name-only origin/main...HEAD > /tmp/changed_files.txt 2>/dev/null || \
+		git diff --name-only HEAD > /tmp/changed_files.txt
+	@CHANGED_FILES_PATH=/tmp/changed_files.txt python3 scripts/check_doc_drift.py

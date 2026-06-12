@@ -133,10 +133,21 @@ Drift detected?
 |----------|-------------|------|-------|
 | OVERVIEW.md | repo root | Executive | Plain-language entry point for P1/P2 |
 | README.md | repo root | Practitioner | Methodology-forward, P3-native |
-| RESEARCH_BRIEF.md | repo root | Executive | One-page thesis — strategic case for the research program |
+| RESEARCH_BRIEF.md | repo root | Executive | One-page thesis — strategic case for the research program. Created at Gate 3; blocked from findings content until Gate 4. |
 | GitHub repo description | GitHub metadata | Executive | 160 chars, no jargon |
 | GitHub topics | GitHub metadata | Technical | Discoverability tags |
-| Compliance log | Lab notebook | — | All content reviewed by Branding Compliance Agent before commit |
+| Compliance log | Lab notebook | — | Human branding review; log entry with reviewer name and date before any executive-mode commit |
+
+### RESEARCH_BRIEF.md Format Specification
+
+One page, four sections, no jargon, no unexplained acronyms:
+
+1. **The Question** — What empirical question this research answers and why it has not been answered before. Opens with the business problem, not the technical approach.
+2. **The Three Structural Differentiators** — Independent (no vendor funding or influence), pre-registered (hypotheses committed before data analysis), designed to scale (framework-agnostic platform that compounds across studies).
+3. **Current State** — Where the program stands today. No findings language before Gate 4. Before Gate 4: describe platform completion and timeline. After Gate 4: describe confirmed findings with confidence intervals.
+4. **What It Changes** — What board conversations, PE diligence, and practitioner decision-making look different when this research is complete. "So what" is explicit.
+
+Creation trigger: Gate 3 completion (EDA review approved). Gate 4 required before any findings language is included.
 
 ## Tools & MCP Servers
 
@@ -152,25 +163,29 @@ Drift detected?
 ## Handoffs
 
 **Receives from**: Orchestrator (phase transitions), any agent producing findings with documentation implications
-**Passes to**: Branding Compliance Agent (all content before commit), GitHub Management Agent (commit after compliance pass)
-**Human gate**: Any executive-mode document requires human review before commit — brand positioning and independence claims require explicit approval
+**Passes to**: GitHub Management Agent (commit after human compliance review)
+**Human gate**: Any executive-mode document requires human branding review before commit — voice compliance, independence claim accuracy, Gate 4 status. Log entry in lab notebook required. (Note: no automated Branding Compliance Agent exists; this is a defined human-in-the-loop step.)
 
 ## Behavioral Constraints
 
-- Never produce executive-mode content without running the Branding Compliance Agent — independence positioning and commercial disclosure are non-negotiable checks
+- Executive-mode content requires human branding review before commit — there is no automated Branding Compliance Agent; the reviewer confirms voice compliance, independence claim accuracy, and Gate 4 status. Log entry with reviewer name and date in lab notebook.
 - Never conflate documentation modes — executive content must not contain unexplained technical jargon; practitioner content must not be dumbed down to executive altitude
-- Always read the current version of a document before rewriting it — no blind overwrites
-- Executive documents use the voice architecture from user preferences Section 3 — not a sanitized corporate voice
+- Always read the current version of a document before rewriting it — no blind overwrites. On rewrite, verify that all required sections (see DRIFT_MAP REQUIRED_SECTIONS) are present in the output.
+- Executive documents use the voice architecture from user preferences Section 3 — premium executive rigor, honest contrarianism, warm authority. Not sanitized corporate voice.
 - Never publish research findings in executive framing before the findings have cleared Gate 4 (confirmatory results review) — executive summaries of unconfirmed findings are a misrepresentation
+- Never include SCF data or SCF-derived content (verbatim, paraphrase, or structural derivative) in any public-facing document — CC BY-ND 4.0 prohibits redistribution of derivative works
+- Independence claims in executive content must be grounded against current vendor relationships — any vendor dependency that qualifies the independence claim must be disclosed or the claim must be qualified
 - GitHub repo description and topics are updated at every phase transition — stale metadata is misleading
 
 ## Failure Modes & Recovery
 
 | Failure | Detection | Recovery |
 |---------|-----------|----------|
-| Branding compliance fails | Compliance Agent returns issues list | Apply specific remediation notes; do not resubmit with same content |
-| Executive document uses unexplained jargon | Self-review pass before compliance gate | Rewrite flagged terms with plain-language bridges |
-| Document conflicts with confirmed research findings | Accuracy gate in compliance review | Correct document; log discrepancy in lab notebook |
+| Human branding review returns issues | Reviewer log entry lists concerns | Apply specific remediation; do not resubmit with same content |
+| Executive document uses unexplained jargon | Self-review pass against mode checklist | Rewrite flagged terms with plain-language bridges |
+| Document conflicts with confirmed research findings | Accuracy check in human review | Correct document; log discrepancy in lab notebook |
+| SCF-derived content detected in public document | Human review or PR security checklist | Remove entirely — no paraphrase is safe under CC BY-ND |
+| Independence claim unsubstantiated | Human review against vendor register | Qualify the claim or disclose the dependency |
 | GitHub API unavailable | mcp-github error | Draft locally; queue for commit when restored |
 
 ## Evaluation Criteria
