@@ -15,19 +15,18 @@ Phase 1 pipeline agents (data-acquisition, data-curation, data-steward, embeddin
 """
 
 # ── Research agents (PROTECTED) ───────────────────────────────────────────────
+# ── Data pipeline agents (not PROTECTED) ─────────────────────────────────────
+from .data_acquisition import DataAcquisitionAgent
+from .data_curation import DataCurationAgent
+from .data_steward import DataStewardAgent
+from .embedding_agent import EmbeddingAgent
+from .hypothesis_formalizer import HypothesisFormalizerAgent
 from .p1_strm_nlp import P1StrmNlpAgent
 from .p2_control_topology import P2ControlTopologyAgent
 from .p3_regulatory_convergence import P3RegulatoryConvergenceAgent
 from .p4_risk_blindspot import P4RiskBlindspotAgent
 from .p5_ai_governance import P5AiGovernanceAgent
 from .statistical_analyst import StatisticalAnalystAgent
-from .hypothesis_formalizer import HypothesisFormalizerAgent
-
-# ── Data pipeline agents (not PROTECTED) ─────────────────────────────────────
-from .data_acquisition import DataAcquisitionAgent
-from .data_curation import DataCurationAgent
-from .data_steward import DataStewardAgent
-from .embedding_agent import EmbeddingAgent
 
 __all__ = [
     # Research agents

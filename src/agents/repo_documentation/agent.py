@@ -35,9 +35,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from ..base import BaseResearchAgent, SAPViolation
 from ...state import HCGRCState
-
+from ..base import BaseResearchAgent, SAPViolationError
 
 DocumentationMode = Literal["executive", "practitioner", "technical"]
 
@@ -183,7 +182,7 @@ class RepoDocumentationAgent(BaseResearchAgent):
         gate_status = state.get("gate_status", {})
         gate_4 = gate_status.get("gate_4")
         if gate_4 is None or gate_4.get("decision") != "approved":
-            raise SAPViolation(
+            raise SAPViolationError(
                 "Executive summaries describing research findings require Gate 4 approval. "
                 "Findings described as conclusions before confirmatory review is complete "
                 "is a misrepresentation. Current Gate 4 status: "

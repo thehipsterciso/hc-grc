@@ -50,7 +50,7 @@ class TestGate1Fires:
         config = _thread_config(run_id)
 
         # Run until interrupt
-        result = graph_with_memory.invoke(state, config=config)
+        graph_with_memory.invoke(state, config=config)
 
         # With MemorySaver, invoke returns after interrupt — check snapshot
         snapshot = graph_with_memory.get_state(config)
@@ -108,7 +108,7 @@ class TestGate1Approved:
 
         # Resume with approval
         approved_response = {"decision": "approved", "rationale": "All Phase 0 prerequisites verified."}
-        final = graph_with_memory.invoke(
+        graph_with_memory.invoke(
             Command(resume=approved_response),
             config=config,
         )

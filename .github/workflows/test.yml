@@ -29,5 +29,5 @@ jobs:
 
       - name: Check for ruff lint errors
         run: |
-          pip install ruff --quiet
+          pip install ruff==0.4.8 --quiet
           ruff check src/ tests/

@@ -1,3 +1,3 @@
-from .agent import DataAcquisitionAgent, AcquisitionResult
+from .agent import AcquisitionResult, DataAcquisitionAgent
 
 __all__ = ["DataAcquisitionAgent", "AcquisitionResult"]

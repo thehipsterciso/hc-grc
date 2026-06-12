@@ -25,7 +25,6 @@ import os
 
 from langgraph.checkpoint.memory import MemorySaver
 
-
 # ── Connection string ─────────────────────────────────────────────────────────
 
 def get_postgres_connection_string() -> str:

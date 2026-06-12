@@ -17,9 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..base import BasePipelineAgent
 from ...state import HCGRCState
-
+from ..base import BasePipelineAgent
 
 # ── Result type ───────────────────────────────────────────────────────────────
 

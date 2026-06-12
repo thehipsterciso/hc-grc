@@ -1,7 +1,7 @@
 """HC-GRC — Autonomous scientific research platform."""
 
-from .state import HCGRCState, GateStatus, initial_state
 from .graph import build_graph, run_phase0_synthetic
+from .state import GateStatus, HCGRCState, initial_state
 
 __all__ = [
     "HCGRCState",

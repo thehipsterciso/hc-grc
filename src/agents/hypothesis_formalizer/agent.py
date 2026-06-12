@@ -38,8 +38,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from ..base import BaseResearchAgent, SAPViolation
 from ...state import HCGRCState
+from ..base import BaseResearchAgent, SAPViolationError
 
 
 @dataclass
@@ -109,9 +109,9 @@ class HypothesisFormalizerAgent(BaseResearchAgent):
         Hypothesis Formalizer does not run in confirmatory phase.
 
         Adding hypotheses after Gate 2 requires a SAP amendment — not this agent.
-        Raises SAPViolation.
+        Raises SAPViolationError.
         """
-        raise SAPViolation(
+        raise SAPViolationError(
             "Hypothesis Formalizer may not add hypotheses after Gate 2. "
             "All pre-registered hypotheses must be formalized before Gate 2 approval. "
             "Post-Gate-2 additions require a LEDGER sap-amendment entry and explicit "
