@@ -8,14 +8,14 @@
 
 All structural integrity claims in the project documentation are conditional on Phase 0 implementation completing before any data acquisition. The following must be verified before SCF data enters the system (per ADR-0015, #71):
 
-- [ ] LangGraph skeleton running with all five gate nodes present
-- [ ] Gate 1 fires with synthetic payload and produces a valid gate record
-- [ ] PostgresSaver checkpointing confirmed on Mac Mini compute node
-- [ ] `compute_data_split()` idempotency test passes: two runs with identical state produce bit-identical output (seed derived from SHA-256 of data manifest hash — see #75)
-- [ ] Hardware benchmark complete: PostgresSaver write throughput characterized, `batch_size` locked (see #76)
-- [ ] Governance dry-run complete: all five components passing (see #93)
+- [x] LangGraph skeleton running with all five gate nodes present
+- [x] Gate 1 fires with synthetic payload and produces a valid gate record *(#109 — `tests/test_phase0/test_gate1.py`)*
+- [x] PostgresSaver checkpointing confirmed on Mac Mini compute node *(#110 — `tests/test_infrastructure/test_postgres_checkpointer.py`, live `hcgrc` DB)*
+- [x] `compute_data_split()` idempotency test passes: two runs with identical state produce bit-identical output (seed derived from SHA-256 of data manifest hash — see #75) *(#111 — `tests/test_phase0/test_data_split.py`)*
+- [x] Hardware benchmark complete: PostgresSaver write throughput characterized (write p95 12.7 ms / read p95 1.2 ms), `batch_size=50` locked (see #76) *(#112)*
+- [x] Governance dry-run complete: all five components passing (see #93) *(#113 — `tests/test_phase0/test_governance_dry_run.py`)*
 
-**No SCF data may be acquired until all items above are checked.**
+**Phase-0 sign-off COMPLETE (2026-06-12, verified on hc-macmini). SCF data acquisition (#116) is now unblocked.**
 
 ---
 
