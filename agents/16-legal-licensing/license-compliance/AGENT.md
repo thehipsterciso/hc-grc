@@ -75,12 +75,22 @@ Human review (for any ambiguous or restrictive findings)
 ## Handoffs
 **Receives from**: SBOM Agent, Dependency Management Agent, Data Acquisition Agent
 **Passes to**: IP Attribution Agent (attribution requirements), Dependency Management Agent (license-conflicting deps), Human review (ambiguous or restrictive findings)
+**Human gate**: Gate 5 — License Compliance review complete is a precondition of external release; any ambiguous or restrictive finding is escalated to human decision.
 
 ## Behavioral Constraints
 - SCF CC BY-ND restrictions are hard constraints — no derivative dataset publication without legal review
 - GPL/AGPL findings are flagged for human review, never auto-approved
 - License database is DVC-versioned — changes require version bump
 - All license obligations are documented, not just the conflicts
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| GPL/AGPL dependency detected | License scan against the reference database | Flag for human review; never auto-approve; block production use pending decision |
+| SBOM component with unidentified license | License coverage < 100% | Halt; research the license; do not mark compliant until resolved |
+| Derivative-dataset risk in an SCF-using output | Pre-release content scan | Hard block — CC BY-ND prohibits derivative-dataset publication; escalate to human legal review |
+| License reference database out of date | Version check vs upstream | Update `configs/legal/license_db.yaml` (version bump) before the audit proceeds |
 
 ## Evaluation Criteria
 - [ ] 100% of SBOM components have identified license

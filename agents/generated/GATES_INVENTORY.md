@@ -10,4 +10,4 @@ Derived from each card's Handoffs `Human gate` entry.
 | Gate 2 | data-steward, hypothesis-formalizer | 2 |
 | Gate 3 | p1-strm-nlp, p2-control-topology, p3-regulatory-convergence, p4-risk-blindspot, p5-ai-governance, report-agent | 6 |
 | Gate 4 | repo-documentation, report-agent, statistical-analyst | 3 |
-| Gate 5 | report-agent | 1 |
+| Gate 5 | ip-attribution, license-compliance, report-agent | 3 |
