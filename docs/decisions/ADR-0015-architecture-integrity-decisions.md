@@ -173,3 +173,25 @@ The Gate 2 payload (split parameters, summary statistics) travels via GitHub iss
 - Agent Evolution AGENT.md: protected agent set constraint
 - P1–P5 and statistical-analyst, hypothesis-formalizer AGENT.md cards: behavioral constraint on prompt modification
 - RUNBOOK.md: create with common run_id cross-store query procedures
+
+---
+
+## Erratum (2026-06-12)
+
+The protected agent set in Decision 7 (#77) named four agents that do not exist
+in the agent library. The decision stands unchanged; the agent **names** are
+corrected to the canonical cards in `agents/03-analysis/`:
+
+| §7 table (as written) | Canonical card name | Status |
+|-----------------------|---------------------|--------|
+| p2-domain-clustering | **p2-control-topology** | corrected |
+| p3-coverage-diffusion | **p3-regulatory-convergence** | corrected |
+| p4-gap-analysis | **p4-risk-blindspot** | corrected |
+| p5-risk-quantification | **p5-ai-governance** | corrected |
+
+`p1-strm-nlp`, `statistical-analyst`, and `hypothesis-formalizer` were already
+correct. The protected **set** (which seven agents are protected, and why) is
+unchanged — only the identifiers are fixed so the Agent-Evolution protection
+guard binds to the real agents. The operational source, `GATES.md`, was corrected
+in the same change. The decision record itself is preserved as originally written
+above; this erratum is the transparent correction.

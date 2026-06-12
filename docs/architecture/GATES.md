@@ -26,14 +26,21 @@ The following agents' prompts may not be modified by Agent Evolution autonomousl
 | Agent | Role |
 |-------|------|
 | p1-strm-nlp | NLP similarity measurement |
-| p2-domain-clustering | Clustering methodology |
-| p3-coverage-diffusion | Semantic coverage measurement |
-| p4-gap-analysis | Gap analysis methodology |
-| p5-risk-quantification | Risk quantification approach |
+| p2-control-topology | Control-space topology / community detection |
+| p3-regulatory-convergence | Cross-framework convergence measurement |
+| p4-risk-blindspot | Risk-coverage gap analysis |
+| p5-ai-governance | AI-governance clustering |
 | statistical-analyst | Evidence weighting and testing |
 | hypothesis-formalizer | Hypothesis structure for testing |
 
 Agent Evolution retains full autonomous scope over all non-protected agents.
+
+> **Names reconciled 2026-06-12.** The P2–P5 entries previously named non-existent
+> agents (`p2-domain-clustering`, `p3-coverage-diffusion`, `p4-gap-analysis`,
+> `p5-risk-quantification`). They are corrected here to the canonical card names in
+> `agents/03-analysis/`. This is an integrity-critical list — a wrong name means
+> Agent Evolution's protection guard targets a non-existent agent and the real
+> analysis agent is left unprotected. ADR-0015 §7 carries a matching erratum.
 
 ---
 

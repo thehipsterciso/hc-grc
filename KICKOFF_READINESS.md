@@ -47,14 +47,16 @@ Nothing in §5 P2+ runs until every box is checked.
 
 ### Track B — Specs & decisions
 - [ ] **[OWNER]** Sign off ADR-0016 (LLM routing + sovereignty carve-out)
-- [ ] Create **Report Agent** card (7 cards hand off to it; it does not exist)
-- [ ] Define **ARA artifact schema** (`ara/ARA_SPEC.md` + Pydantic models)
-- [ ] Add **tier/`model:` assignment** to all 49 cards (none specify one today)
+- [x] Create **Report Agent** card — `agents/12-academic-dissemination/report-agent/AGENT.md` (2026-06-12)
+- [x] Define **ARA artifact schema** — `ara/ARA_SPEC.md` (2026-06-12; `src/ara/models.py` generation is a follow-up build task)
+- [x] Add **tier assignment** — `agents/MODEL_TIER_ASSIGNMENTS.md` registry (2026-06-12; per-card `model_tier:` frontmatter + CARDS_SPEC bump is a follow-up)
 - [ ] **[OWNER]** Resolve **DIVERGENCE-01** metric (P1 design depends on it)
-- [ ] Fix protected-agent name drift: ADR-0015 §7 lists `p2-domain-clustering`,
-      `p3-coverage-diffusion`, `p4-gap-analysis`, `p5-risk-quantification` —
-      real cards are `p2-control-topology`, `p3-regulatory-convergence`,
-      `p4-risk-blindspot`, `p5-ai-governance`. Integrity-critical list; reconcile.
+- [x] Fix protected-agent **name drift** — corrected in GATES.md + ADR-0015 erratum (2026-06-12)
+- [ ] **Reconcile gate-number drift** (NEW, integrity-relevant): the P1–P5 analysis
+      cards call the exploratory/EDA review "Gate 3" and the results review "Gate 4",
+      but the locked GATES.md + `src/graph.py` define Gate 2 = exploratory→confirmatory
+      firewall and Gate 3 = analysis/results review. The cards are off-by-one against
+      the firewall authority. Must reconcile before any card drives gate routing.
 
 ### Track C — Build prerequisites
 - [ ] `reasoning_client` abstraction over the Agent SDK (setup-token, headless)
@@ -93,11 +95,12 @@ subscription reasoning + gates as one working system. Everything after is breadt
 5. Implement 4 data-pipeline agents + acquire SCF (SHA-256 + DVC)
 
 **P1 — specs that unblock build (cheap, parallel with P0)**
-6. Create Report Agent card
-7. Define ARA artifact schema
-8. Add tier/`model:` assignment to all cards
+6. ~~Create Report Agent card~~ ✅ 2026-06-12
+7. ~~Define ARA artifact schema~~ ✅ 2026-06-12 (`ara/ARA_SPEC.md`; model codegen pending)
+8. ~~Add tier assignment to all cards~~ ✅ 2026-06-12 (`agents/MODEL_TIER_ASSIGNMENTS.md`; per-card field pending)
 9. **[OWNER]** Resolve DIVERGENCE-01
-10. Reconcile protected-agent name drift (ADR-0015 §7 vs cards)
+10. ~~Reconcile protected-agent name drift~~ ✅ 2026-06-12 (GATES.md + ADR-0015 erratum)
+10a. **Reconcile gate-number drift** (NEW): analysis cards off-by-one vs locked GATES.md/graph.py firewall
 
 **P2 — first analysis slice**
 11. Implement P1 (STRM NLP) end-to-end → run Gate 1
