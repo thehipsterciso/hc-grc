@@ -92,7 +92,7 @@ For the field: the first empirical test of the assumptions embedded in the frame
 
 ## Where Things Stand
 
-The platform is built. The 48-agent research system — organized across 17 specialized teams covering data, analysis, statistics, governance, and dissemination — is fully specified and under active development. The research protocol is locked. The pre-registration record is live.
+The platform is built. The 50-agent research system — organized across 17 specialized teams covering data, analysis, statistics, governance, and dissemination — is fully specified and under active development. The research protocol is locked. The pre-registration record is live.
 
 Data acquisition begins when compute infrastructure is provisioned. Analysis follows.
 

@@ -36,7 +36,7 @@ Five analytical modules, run in parallel:
 
 ## Architecture
 
-The platform is agent-driven. Forty-eight specialized agents — organized into seventeen teams — execute the full research lifecycle from data acquisition through peer-reviewed publication. Human approval gates are enforced structurally at five points in the pipeline.
+The platform is agent-driven. Fifty specialized agents — organized into seventeen teams — execute the full research lifecycle from data acquisition through peer-reviewed publication. Human approval gates are enforced structurally at five points in the pipeline.
 
 The architecture is designed for the full program: ARA artifact schemas are framework-agnostic so Tier 2 can ingest all Tier 1 outputs without schema changes. Null results are structured identically to positive findings. Confidence scores are first-class.
 
@@ -51,7 +51,7 @@ See [`docs/protocol/`](docs/protocol/) for the full research protocol and [`docs
 ## Navigating This Repository
 
 ```
-agents/          Agent library — 48 AGENT.md specification cards across 17 teams
+agents/          Agent library — 50 AGENT.md specification cards across 17 teams
 ara/             Agent-Native Research Artifact — structured data artifacts and deliverables
 analysis/        Phase-separated analysis outputs (01-exploratory/ and 02-confirmatory/)
 configs/         Experiment and pipeline configuration
@@ -79,12 +79,14 @@ tests/           Test suite (built by agents)
 | [`docs/charter/PROJECT_CHARTER.md`](docs/charter/PROJECT_CHARTER.md) | Full scope, schema, technology stack |
 | [`docs/architecture/AGENT_WORKFLOW.md`](docs/architecture/AGENT_WORKFLOW.md) | LangGraph topology, state schema, gate implementations |
 | [`docs/architecture/SWARM_IMPLEMENTATION_ROADMAP.md`](docs/architecture/SWARM_IMPLEMENTATION_ROADMAP.md) | Implementation sequence, phases 0–6 plus Tier 2/3 |
-| [`docs/decisions/`](docs/decisions/) | All ADRs (ADR-0001 through ADR-0011) |
+| [`docs/decisions/`](docs/decisions/) | All ADRs (ADR-0001 through ADR-0016) |
 | [`docs/protocol/PREREGISTRATION_LEDGER.md`](docs/protocol/PREREGISTRATION_LEDGER.md) | Timestamped pre-registration record |
+| [`KICKOFF_READINESS.md`](KICKOFF_READINESS.md) | Definition of Ready, critical path, backlog (issues #109–#127) |
+| [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md) | Canonical directory map — read at run start |
 
 ## Status
 
-Platform is in pre-execution phase. Agent library complete (48 cards). Research protocol locked at framework level. Statistical Analysis Plan deferred until post-exploratory (Gate 2). Data acquisition has not begun.
+Platform is in pre-execution phase. Agent library complete (50 cards). Research protocol locked at framework level. Statistical Analysis Plan deferred until post-exploratory (Gate 2). Data acquisition has not begun.
 
 ## License
 
