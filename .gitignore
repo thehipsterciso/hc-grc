@@ -15,16 +15,29 @@ env/
 .env
 *.env
 
-# Data — DVC-tracked; raw data files not committed directly
+# Data — DVC-tracked; raw data files not committed directly.
+# Blanket-ignore the data payloads, but RE-INCLUDE the DVC pointer files
+# (*.dvc) and .gitkeep so directory structure and DVC metadata are versioned in
+# git while the actual data lives only in the DVC cache / local remote.
 data/01-raw/**
+!data/01-raw/**/
+!data/01-raw/**/*.dvc
 !data/01-raw/.gitkeep
 data/02-interim/**
+!data/02-interim/**/
+!data/02-interim/**/*.dvc
 !data/02-interim/.gitkeep
 data/03-processed/**
+!data/03-processed/**/
+!data/03-processed/**/*.dvc
 !data/03-processed/.gitkeep
 data/external/**
+!data/external/**/
+!data/external/**/*.dvc
 !data/external/.gitkeep
 data/embeddings/**
+!data/embeddings/**/
+!data/embeddings/**/*.dvc
 !data/embeddings/.gitkeep
 
 # DVC

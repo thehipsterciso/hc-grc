@@ -61,6 +61,9 @@ opentelemetry-exporter-otlp>=1.25.0
 # Provenance (W3C PROV-DM)
 rdflib>=7.0.0
 
+# Data versioning (DVC — local remote only, telemetry disabled; no SaaS)
+dvc>=3.0
+
 # Jupyter
 jupyter==1.0.0
 jupyterlab==4.2.2
