@@ -58,6 +58,14 @@ Lab notebook entry
 | fixed | Patched in current version |
 | under_investigation | Exploitability unclear; monitoring |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-github | Repo operations — commit, branch, PR, issue | mcp-github | External — code/issues only, never SCF data |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: SBOM Agent (trigger + component list)
 **Passes to**: Dependency Management Agent (affected findings), License Compliance Agent (for completeness)

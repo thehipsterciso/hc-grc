@@ -57,6 +57,13 @@ Downstream    Reject + flag to
 | No extrapolation | Output does not claim findings not in analysis | Reject |
 | Citation format | Literature citations match indexed sources | Flag |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-phoenix | LLM observability traces keyed by run_id | mcp-phoenix | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **NeMo Guardrails** — Structured dialog flow and output constraint enforcement. Primary engine.
 - **LlamaGuard** — Safety classification for generated content.

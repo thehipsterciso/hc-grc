@@ -27,6 +27,14 @@ Some capability requirements cannot be met by standard quantization or fine-tuni
 | Model too large for target deployment after quantization | Knowledge distillation or pruning | Produces smaller student model |
 | Domain-specific capabilities need combining | Model merging (TIES, DARE) | Merges specialized adapters |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **Speculative Decoding** — Draft + verify pattern for 2–4× throughput improvement with identical outputs.
 - **Knowledge Distillation** — Train smaller student model on teacher outputs. Reduces model size while retaining capability.

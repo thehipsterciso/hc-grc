@@ -58,6 +58,13 @@ Commit / Execute    Block + flag to
 | External network calls in analysis code | AST analysis | Medium — flag |
 | PEP8 / black / ruff compliance | Linter | Low |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-github | Repo operations — commit, branch, PR, issue | mcp-github | External — code/issues only, never SCF data |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: All code-generating agents (inline, synchronous)
 **Passes to**: Originating agent (pass/fail), GitHub Management Agent (SARIF reports)

@@ -43,6 +43,13 @@ A P2 control topology graph with 1,400 nodes is not a table. A P5 HDBSCAN cluste
 | Interactive versions | reports/figures/ (DVC) | HTML (Plotly) | For digital whitepapers |
 | Figure captions | reports/figures/ (DVC) | Markdown | Matched to figure filenames |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: P1–P5 analysis agents, Statistical Analyst
 **Passes to**: ML Paper Agent (figures), Whitepaper Agent (figures), Chart Agent (executive-simplified versions), Branding Compliance Agent (visual review)

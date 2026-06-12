@@ -49,6 +49,12 @@ Distribution amplifies reach. A Substack issue or whitepaper reaches subscribers
 | X / Twitter | 280 chars or thread | Maximum compression; one idea per tweet in threads |
 | Threads | Short-form, conversational | Mid-length, dialogue tone |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: Substack Agent, Whitepaper Agent, Business Presentation Agent (source content)
 **Passes to**: Human (publishes)

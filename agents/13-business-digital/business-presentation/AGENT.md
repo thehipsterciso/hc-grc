@@ -40,6 +40,13 @@ Research findings that only live in whitepapers and academic papers do not reach
 | Slide deck draft | reports/presentations/ (DVC) | PPTX | Executive-formatted, brand-compliant |
 | Speaker notes | reports/presentations/ (DVC) | Included in PPTX | Substantive — not bullet recitations |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+
 ## Handoffs
 **Receives from**: Whitepaper Agent, Orchestrator (Gate 4 dissemination signal)
 **Passes to**: Branding Compliance Agent (visual review), Visualization Agent (charts/diagrams), Human (presents)

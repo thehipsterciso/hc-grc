@@ -25,6 +25,13 @@ Research findings that are not communicated are research that did not happen. Th
 | Findings available | ≥ 1 confirmed finding with QA score ≥ 3.5/5 |
 | Target venue specified | Orchestrator or human reviewer specifies venue |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+
 ## Skills Used
 - **ML Paper Writing** — LaTeX templates and structure guidance for NeurIPS, ICML, ICLR, ACL, AAAI, COLM. Venue-specific formatting, abstract structure, related works positioning.
 

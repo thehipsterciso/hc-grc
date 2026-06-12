@@ -51,6 +51,12 @@ The newsletter is the primary channel for building the independent practitioner 
 | Unexpected analogies | Maximum two per issue, must illuminate not decorate |
 | No FUD | Path forward always present |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: Human reviewer (topic selection and briefing)
 **Passes to**: Human reviewer for editing and approval; Social Media Agent for distribution content

@@ -50,6 +50,14 @@ Lab notebook entry
 | SBOM diff | lab notebook | Markdown | What changed since last SBOM |
 | Component count | lab notebook | Append-only | Direct deps, transitive deps |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-github | Repo operations — commit, branch, PR, issue | mcp-github | External — code/issues only, never SCF data |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: CI/CD Agent (trigger on main merge)
 **Passes to**: VEX Agent (component list for vulnerability status), Dependency Management Agent (new component alerts), License Compliance Agent (license inventory)

@@ -60,6 +60,14 @@ CI/CD Agent (test suite validation)
 | Typosquatting risk | Package name similarity checks for new additions |
 | Unpinned dependencies | requirements.txt pin enforcement |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-github | Repo operations — commit, branch, PR, issue | mcp-github | External — code/issues only, never SCF data |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: VEX Agent (CVE findings), SBOM Agent (inventory)
 **Passes to**: Code Review Agent (proposed update PRs), License Compliance Agent (license findings), DevSecOps Agent (unresolved findings)

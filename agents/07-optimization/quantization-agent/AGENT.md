@@ -34,6 +34,14 @@ Full-precision and LoRA-adapted models may exceed local hardware capacity at inf
 | No calibration data available | bitsandbytes NF4 (load-time) |
 | Aggressive compression, accuracy secondary | HQQ |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-mlflow | Log experiment runs, metrics, and params keyed by run_id | mcp-mlflow | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Skills Used
 - **bitsandbytes** — Load-time 4-bit/8-bit quantization. No calibration data needed. Default for rapid prototyping.
 - **GPTQ** — Post-training quantization requiring calibration dataset. High accuracy retention at 4-bit.

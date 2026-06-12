@@ -70,6 +70,13 @@ This attribution appears in every publication, whitepaper, presentation, and rep
 | Model weights | Yes — per model license | Methods section of papers |
 | Tools and infrastructure | Best practice, not always required | NOTICE or acknowledgments |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+
 ## Handoffs
 **Receives from**: License Compliance Agent, Literature Agent, SBOM Agent
 **Passes to**: ML Paper Agent (citations, attributions), Whitepaper Agent (attribution blocks), all dissemination agents

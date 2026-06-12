@@ -56,6 +56,14 @@ Code Review Agent     SBOM Agent      VEX Agent     Dependency Management Agent
 | Medium | 2 weeks | Flag in posture report |
 | Low | Next scheduled assessment | Track in posture report |
 
+## Tools & MCP Servers
+
+| Tool | Purpose | MCP Server | Notes |
+|------|---------|-----------|-------|
+| mcp-github | Repo operations — commit, branch, PR, issue | mcp-github | External — code/issues only, never SCF data |
+| mcp-lab-notebook | Append decisions, findings, and anomalies (append-only) | mcp-lab-notebook | Local |
+| mcp-dvc | Version data/model/report artifacts; retrieve content hashes | mcp-dvc | Local |
+
 ## Handoffs
 **Receives from**: Code Review Agent, SBOM Agent, VEX Agent, Dependency Management Agent (unresolved findings)
 **Passes to**: Orchestrator (escalations), Human (critical findings requiring manual remediation)
