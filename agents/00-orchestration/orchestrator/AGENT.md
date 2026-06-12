@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Manages the full HC-GRC research lifecycle. Routes work to specialist agents, enforces five human approval gates via LangGraph interrupt nodes, maintains shared research state, and prevents any confirmatory analysis from running without a locked SAP. Grounds itself in the canonical repo structure and institutional memory at run start so routing never depends on degrading context. The central nervous system of the platform — nothing moves without passing through it.
-version: 1.1.0
+version: 1.1.1
 team: 00-orchestration
 status: primary
 trigger: always
@@ -78,9 +78,9 @@ Human Research Brief
 **Human gate**: Five gates enforced via LangGraph `interrupt()`:
 - Gate 1 — Research question + theoretical framework approval → triggers Repo Documentation Agent (status update)
 - Gate 2 — SAP + pre-registration lock (hard block: no confirmatory analysis without this) → triggers Repo Documentation Agent (status update)
-- Gate 3 — EDA findings review before confirmatory phase begins → triggers Repo Documentation Agent (RESEARCH_BRIEF.md creation)
-- Gate 4 — Confirmatory results review before reporting begins → triggers Repo Documentation Agent (findings documentation, executive summaries)
-- Gate 5 — Final report approval before dissemination → triggers Repo Documentation Agent (final status update)
+- Gate 3 — Confirmatory analysis review (all pre-specified tests complete, QA scored) before dissemination prep → triggers Repo Documentation Agent (RESEARCH_BRIEF.md creation)
+- Gate 4 — Dissemination authorization (all findings QA ≥ 3.5/5) before dissemination agents run → triggers Repo Documentation Agent (findings documentation, executive summaries)
+- Gate 5 — Archive & release authorization before external publication → triggers Repo Documentation Agent (final status update)
 
 ## Behavioral Constraints
 

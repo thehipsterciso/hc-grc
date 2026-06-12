@@ -19,7 +19,7 @@ tools: [mcp-qdrant, mcp-mlflow, mcp-lab-notebook]
 
 ## Position in Workflow
 
-Runs in parallel with P1 after Embedding Agent and Gate 2. Topology analysis is largely exploratory; confirmatory hypotheses focus on specific structural predictions.
+Runs in parallel with P1 after the Embedding Agent (exploratory, post-Gate 1). Topology analysis is largely exploratory; confirmatory hypotheses (tested after Gate 2) focus on specific structural predictions.
 
 ```
 [Embedding Agent: Qdrant collections]
@@ -68,7 +68,7 @@ Runs in parallel with P1 after Embedding Agent and Gate 2. Topology analysis is 
 
 **Receives from**: Data Steward (splits), Embedding Agent (Qdrant metadata), ARA artifacts (node attributes)
 **Passes to**: P3 Agent (community assignments for cross-framework analysis), P4 Agent (hub map for blindspot detection), Statistical Analyst (H2.x test inputs), Report Agent (topology visualizations)
-**Human gate**: Gate 3 — human reviews community structure and hub control register before confirmatory analysis
+**Human gate**: Gate 2 — human reviews community structure and hub control register before the SAP lock and confirmatory analysis
 
 ## Behavioral Constraints
 - **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).

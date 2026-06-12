@@ -19,7 +19,7 @@ The STRM mappings represent 280,000+ expert judgments about how security control
 
 ## Position in Workflow
 
-Runs after Embedding Agent completes and Gate 2 is confirmed. Exploratory phase uses train+val splits. Confirmatory phase uses test split.
+Runs after the Embedding Agent completes. Exploratory phase (after Gate 1) uses train+val splits; confirmatory phase (after Gate 2) uses the test split.
 
 ```
 [Embedding Agent: FAISS index + Qdrant]
@@ -27,7 +27,7 @@ Runs after Embedding Agent completes and Gate 2 is confirmed. Exploratory phase 
         ↓
 [P1 Agent]
   ├── EXP_ exploratory analysis (train+val)
-  ├── Human Gate 3 review
+  ├── Human Gate 2 review (SAP lock + test split release)
   └── H1.x confirmatory tests (test split, per SAP)
         ↓
 [Statistical Analyst] and [QA Agent]
@@ -68,7 +68,7 @@ Runs after Embedding Agent completes and Gate 2 is confirmed. Exploratory phase 
 
 **Receives from**: Embedding Agent (indices), Data Steward (splits), Hypothesis Formalizer (H1.x test specs)
 **Passes to**: Statistical Analyst (confirmatory test inputs), QA Agent (results for rigor review), Report Agent (P1 findings)
-**Human gate**: Gate 3 — human reviews exploratory similarity distribution and disagreement register before confirmatory analysis begins
+**Human gate**: Gate 2 — human reviews exploratory similarity distribution and disagreement register; the SAP is locked and the test split released before confirmatory analysis begins
 
 ## Behavioral Constraints
 - **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).

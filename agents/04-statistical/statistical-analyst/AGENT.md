@@ -19,10 +19,10 @@ The analysis modules generate findings. The Statistical Analyst determines which
 
 ## Position in Workflow
 
-Runs after Gate 3 (EDA review). Receives test-split access from Data Steward only after Gate 3 is confirmed.
+Runs after Gate 2 (SAP lock + test split release). Receives test-split access from Data Steward only after Gate 2 is confirmed.
 
 ```
-Human Gate 3: EDA review complete
+Human Gate 2: SAP locked, test split released
         ↓
 [Statistical Analyst]
   ├── SAP validation — confirm all H[x].[y] IDs are registered
@@ -30,7 +30,7 @@ Human Gate 3: EDA review complete
   ├── Multiple comparisons correction
   └── Full results table (all hypotheses, positive and null)
         ↓
-Human Gate 4: Results review
+Human Gate 3: Results review
         ↓
 [Report Agent]
 ```
@@ -39,7 +39,7 @@ Human Gate 4: Results review
 
 | Input | Source | Format | Schema / Notes |
 |-------|--------|--------|----------------|
-| Test split | Data Steward (unlocked at Gate 3) | Parquet | Accessed exactly once |
+| Test split | Data Steward (unlocked at Gate 2) | Parquet | Accessed exactly once |
 | Registered hypotheses | docs/protocol/03_statistical_analysis_plan.md | JSON | H[x].[y]: test name, variables, effect size threshold, alpha, power |
 | Analysis module outputs | P1–P5 Agents | Parquet | Computed features and metrics used as test inputs |
 | Confirmed SAP lock | mcp-sap-validator | Timestamp | Refuses to run without confirmed Gate 2 lock |
@@ -68,8 +68,8 @@ Human Gate 4: Results review
 ## Handoffs
 
 **Receives from**: P1–P5 Agents (test inputs), Data Steward (test split), SAP validator (lock confirmation)
-**Passes to**: QA Agent (results for rigor review), Report Agent (results table for paper), Human Gate 4 (full results for review)
-**Human gate**: Gate 4 — human reviews the complete results table before Report Agent begins. Unexpected results (large effect sizes in unexpected direction, all nulls across a module) are Gate 4 discussion items.
+**Passes to**: QA Agent (results for rigor review), Report Agent (results table for paper), Human Gate 3 (full results for review)
+**Human gate**: Gate 3 — human reviews the complete results table before Report Agent begins. Unexpected results (large effect sizes in unexpected direction, all nulls across a module) are Gate 3 discussion items.
 
 ## Behavioral Constraints
 - **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
@@ -91,7 +91,7 @@ Human Gate 4: Results review
 
 ## Evaluation Criteria
 
-- [ ] All SAP-registered hypotheses tested — no untested hypotheses at Gate 4
+- [ ] All SAP-registered hypotheses tested — no untested hypotheses at Gate 3
 - [ ] All null results documented in reports/null-results/ per format spec
 - [ ] Multiple comparisons correction applied and documented
 - [ ] Effect size and CI reported for every test

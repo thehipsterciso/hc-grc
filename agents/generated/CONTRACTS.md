@@ -312,7 +312,7 @@
 
 | Input | Source | Format | Schema / Notes |
 |-------|--------|--------|----------------|
-| Test split | Data Steward (unlocked at Gate 3) | Parquet | Accessed exactly once |
+| Test split | Data Steward (unlocked at Gate 2) | Parquet | Accessed exactly once |
 | Registered hypotheses | docs/protocol/03_statistical_analysis_plan.md | JSON | H[x].[y]: test name, variables, effect size threshold, alpha, power |
 | Analysis module outputs | P1–P5 Agents | Parquet | Computed features and metrics used as test inputs |
 | Confirmed SAP lock | mcp-sap-validator | Timestamp | Refuses to run without confirmed Gate 2 lock |
