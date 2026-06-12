@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-06-09
 **Deciders:** Thomas Jones
+**Amended by:** ADR-0016 (2026-06-12, accepted) — permits transient frontier inference over SCF-derived text via the Claude Agent SDK on the Max subscription; the local-only *storage* stance (no derived artifacts leave the machine) is unchanged.
 
 ---
 
