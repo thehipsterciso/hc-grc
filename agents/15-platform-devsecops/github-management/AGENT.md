@@ -15,7 +15,7 @@ tools: [mcp-github, mcp-lab-notebook]
 
 ## Purpose
 
-Version control is the backbone of reproducibility. Every artifact the pipeline produces — analysis code, configuration, protocol documents, agent cards — must be versioned in Git with meaningful commit messages, on the correct branch, following the project's branch strategy. This agent is the only pipeline component that writes to the repository. Pre-registration commits are a special case: they go to the protected `pre-registration` branch and trigger RFC 3161 timestamping.
+Version control is the backbone of reproducibility. Every artifact the pipeline produces — analysis code, configuration, protocol documents, agent cards — must be versioned in Git with meaningful commit messages, on the correct branch, following the project's branch strategy. This agent is the only pipeline component that writes to the repository. Pre-registration commits are a special case: they go to the protected `pre-registration` branch with a signed commit hash recorded in the lab notebook as the lock proof.
 
 ## Position in Workflow
 
@@ -48,7 +48,7 @@ Lab notebook entry
 |----------|-------------|--------|-------|
 | Git commit | GitHub repository | Commit | SHA logged to lab notebook |
 | PR | GitHub repository | PR | For branch-to-main merges |
-| Pre-registration commit | protected/pre-registration branch | Commit + RFC 3161 .tsr | SAP lock and hypothesis registration only |
+| Pre-registration commit | protected/pre-registration branch | Commit | SAP lock and hypothesis registration only; commit hash recorded in lab notebook as lock proof |
 | Lab notebook entry | lab notebook | Append-only | Commit SHA, branch, artifact description |
 
 ## Branch Strategy
@@ -57,7 +57,7 @@ Lab notebook entry
 |--------|---------|-------------|
 | main | Stable, reviewed artifacts | PR only |
 | dev | Active development | Direct push (agents) |
-| pre-registration | Pre-registration documents | Protected — RFC 3161 timestamped commits only |
+| pre-registration | Pre-registration documents | Protected — append-only; commit hash recorded in lab notebook |
 | feature/[name] | Specific feature or analysis work | Direct push (agents) |
 
 ## Commit Convention
@@ -83,6 +83,6 @@ Types: `feat`, `fix`, `docs`, `analysis`, `config`, `refactor`, `chore`
 
 ## Evaluation Criteria
 - [ ] Zero secrets committed (audit via git-secrets or equivalent)
-- [ ] All pre-registration commits have RFC 3161 timestamps
+- [ ] All pre-registration commit hashes recorded in lab notebook as lock proof
 - [ ] main branch protection enforced (no direct pushes)
 - [ ] All commit SHAs logged to lab notebook

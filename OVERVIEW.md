@@ -1,138 +1,103 @@
-# HC-GRC — A Plain Language Guide
+# What This Is and Why It Matters
 
-Cybersecurity frameworks are the foundation of how organizations decide what controls to implement, how to measure compliance, and how to defend against risk. Billions of dollars in security spending flow from the decisions those frameworks inform.
-
-Nobody has ever tested whether the foundations are correct.
-
-This project does that — empirically, rigorously, at scale — and builds the infrastructure to keep doing it across every major framework in the industry.
+> For technical architecture and research protocol: [README.md](README.md)
 
 ---
 
-## The Problem
+## The Uncomfortable Question
 
-The Secure Controls Framework (SCF) is one of the most comprehensive cybersecurity frameworks ever built. It maps 1,400+ security controls across 33 domains to over 200 laws, regulations, and other frameworks through approximately 280,000 expert-assigned relationship mappings.
+Every organization with a security program is operating from a map. Frameworks — SOC 2, ISO 27001, NIST CSF, PCI DSS, and dozens of others — tell them what controls to implement, how those controls relate to one another, and what compliance posture looks like across their entire risk surface.
 
-Those relationships — which controls are equivalent, which ones overlap, which ones cover the other — were created by domain experts. They have never been independently validated. They are treated as ground truth throughout the industry.
+The map has never been verified.
 
-What if they are systematically wrong in certain areas? What if controls that experts called "equivalent" are actually saying different things? What if there are entire risk categories that no major framework adequately covers?
+The 280,000 expert-derived relationship mappings that connect security controls across frameworks — which control is equivalent to which, which ones overlap, which ones cover the other — were created by domain experts, published as authoritative guidance, and adopted wholesale by the industry. No independent empirical test has ever been run on them.
 
-These are not hypothetical concerns. They are testable questions. This project tests them.
-
----
-
-## How It Works
-
-### 1. It Runs Itself
-
-The platform is an autonomous research system. Once it starts, it analyzes data, generates hypotheses, runs statistical tests, evaluates its own findings, and iterates — continuously, without requiring day-to-day human involvement.
-
-Think of it less like a tool and more like a research team that never sleeps, never loses focus, and documents everything it does.
-
-```mermaid
-graph LR
-    A[Data Ingestion] --> B[Exploratory Analysis]
-    B --> C[Hypothesis Generation]
-    C --> D[Statistical Testing]
-    D --> E[Finding Evaluation]
-    E --> B
-    E --> F[Publication Readiness]
-```
-
-The cycle repeats. Each pass makes the findings sharper.
+This project runs that test.
 
 ---
 
-### 2. The Operator Stays in Control
+## Why This Is a Business Problem, Not a Technical One
 
-Autonomy does not mean unsupervised. The platform distinguishes between two types of decisions:
+When a board asks "are we secure?" the answer usually references framework compliance. When a PE firm does diligence on a portfolio company's security posture, the documentation references framework compliance. When a regulator asks about controls, the answer references framework compliance.
 
-**Decisions the platform makes on its own** — anything within the current approved research direction. New analytical angles, refined hypotheses, variations on approved methods. The platform proceeds without asking.
+All of that rests on the assumption that the frameworks themselves are empirically sound — that the expert-assigned control relationships are correct, that the coverage is real, and that complying with multiple frameworks actually produces the compounding risk reduction that organizations are paying for.
 
-**Decisions that require operator approval** — any time the platform wants to expand into new territory. New subject areas. Substantially different methods. New data sources. These require explicit sign-off before the platform proceeds.
+If those assumptions are wrong in systematic ways, the implications are significant. Compliance spend is being allocated against a model that has never been tested. Risk assessments are being built on unmeasured foundations. Board-level conversations about security posture are referencing confidence that is, at least in part, unearned.
 
-When operator approval is needed, the platform files a structured proposal. The operator reviews it via Claude on any device — phone, tablet, laptop — and responds with approve, reject, or defer. The platform waits. It never expands its own scope without permission.
-
-```mermaid
-graph LR
-    A[Platform detects\nscope expansion needed] --> B[Files structured\nproposal via GitHub]
-    B --> C[Operator notified\non any device]
-    C --> D[Reviews proposal\nvia Claude]
-    D --> E{Decision}
-    E -->|Approve| F[Platform proceeds\nwith new direction]
-    E -->|Reject| G[Platform continues\nexisting direction]
-    E -->|Defer| H[Parked until\noperator ready]
-```
-
-The operator governs direction. The platform handles execution.
+The question "are we secure?" deserves a better empirical foundation than it currently has.
 
 ---
 
-### 3. The Findings Are Trustworthy
+## What This Builds
 
-Research integrity is structural, not procedural. The platform enforces it through five human-approved checkpoints — gates — at critical transitions in the research lifecycle.
+An autonomous research platform that empirically tests those foundations, starting with the world's most comprehensive security control framework — the Secure Controls Framework (SCF), which maps 1,400+ controls across 33 domains and serves as the connective tissue across over 200 laws, regulations, and other frameworks.
 
-The most important gate sits between exploratory analysis and confirmatory testing. Before the platform ever runs a confirmatory statistical test, the test data is locked away in a separate partition it cannot access. The platform forms its hypotheses using only the exploratory data. Then — and only then — does the gate open, the test data becomes accessible, and the confirmatory tests run.
+Five analytical modules run in parallel:
 
-This means the platform cannot — architecturally cannot — look at the answer before committing to the question. Every finding traces back to a timestamped, cryptographically signed pre-registration record that proves the hypothesis existed before the test ran.
+| Analysis | The Question |
+|----------|-------------|
+| NLP Calibration | Do control texts actually mean what the expert mappings say they mean? |
+| Control Topology | What is the real community structure of the control space — not the editorial structure? |
+| Convergence Atlas | Where do frameworks genuinely agree, and where do they just use the same words? |
+| Risk Blindspot Engine | Which risk categories have systematic gaps across all major frameworks? |
+| AI Governance Clustering | Does the current framework taxonomy actually capture AI governance — or is it a retrofit? |
 
-```mermaid
-graph TD
-    A[Exploratory Analysis\non training data] --> B[Hypotheses formed\nand registered]
-    B --> C{Gate 2\nOperator Approval}
-    C -->|Approved| D[Test data unlocked]
-    D --> E[Confirmatory tests run\nagainst locked hypotheses]
-    E --> F[Findings produced\nwith full audit trail]
-    C -->|Rejected| G[Return to exploratory]
-```
+Every hypothesis is registered before data is analyzed. The test dataset is locked behind a structural firewall until hypotheses are committed. Every finding carries confidence intervals. Null results are published with the same rigor as positive results.
 
-The integrity model is the same one clinical trials use. The analysis is pre-registered before the test runs. There is no way to retrofit the hypothesis to fit the result.
+The integrity model is the same one clinical trials use. The destination is peer-reviewed academic publication.
 
 ---
 
-## The Research Program
+## The Three-Tier Program
 
-This project is the first of three tiers.
+This is not a single study. It is the foundation of a research program.
 
-**Tier 1 — Framework Science (this project)**
+**Tier 1 — Framework Science** *(this project)*
 
-Empirical characterization of the SCF. Do the expert-assigned control relationships hold up under independent computational analysis? Where do they diverge, and what does that divergence mean? What is the actual semantic structure of the control space — not the editorial structure the framework authors intended, but the structure the data reveals?
+Empirical characterization of individual frameworks. The SCF is the starting point. Each major framework — NIST 800-53, CIS v8, NIST 800-82 — gets its own independent study. The infrastructure is built once; each new framework is a new study that runs on the same platform.
 
-Each major framework gets its own independent study. The SCF is first.
+**Tier 2 — Cross-Framework Synthesis** *(next)*
 
-**Tier 2 — Cross-Framework Synthesis (future)**
+Cross-framework synthesis requires that each individual framework has been independently characterized first. Tier 2 answers: which controls are genuinely load-bearing across the entire compliance landscape? Where do frameworks truly converge versus merely share terminology? What is the blast radius of a single control failure propagating across a cross-framework topology?
 
-Once multiple frameworks have been independently characterized, the comparative questions become answerable. Which controls are genuinely load-bearing across the entire industry — present in every framework, semantically consistent, empirically validated? Which risk categories are addressed by everyone, and which are quietly ignored? Where does the GRC landscape converge, and where does it only appear to?
+**Tier 3 — Organizational Impact Modeling** *(following)*
 
-**Tier 3 — Organizational Impact Modeling (future)**
-
-The commercially significant tier. Takes the empirically validated framework relationships and models them against real organizational data to answer the question every board wants answered: which control failures actually drive financial losses, and by how much? This is what actuaries do for insurance. It has never been done for cybersecurity controls grounded in empirically proven framework relationships.
+The tier with direct commercial and financial significance. Causal inference — not correlation — applied to the question boards actually want answered: which control failures drive financial losses, and by how much? Monte Carlo confidence intervals. SHAP explainability for the board conversation. This is actuarial science for cybersecurity risk, grounded in empirically validated framework relationships. It does not exist yet. It will.
 
 ---
 
-## What This Produces
+## What Makes This Different from Other GRC Research
 
-The platform produces findings in three categories, with every finding labeled by how it was generated and how much confidence it warrants:
+Three things that are structural, not claimed:
 
-**Structural characterization** — the actual semantic organization of the SCF control space. Which controls cluster together naturally. Which clusters map to the editorial domains and which do not. Where the framework's organizational choices diverge from the data's natural structure.
+**Independent.** No vendor funded this. No framework publisher commissioned it. No consulting firm with a stake in the outcome has any influence on what it finds. Independence is not a positioning choice — it is the research design. The findings will say what the data says.
 
-**Mapping validation** — which of the 280,000 expert-assigned STRM relationships hold up under computational analysis, which do not, and where the divergence is largest. This is the first empirical test of the SCF's core claim.
+**Pre-registered.** Hypotheses are publicly committed before data is analyzed. This is the standard that separates scientific findings from sophisticated pattern-matching. Most industry research does not meet this bar. This one does — the timestamped pre-registration record is in this repository.
 
-**Coverage analysis** — which of the 39 SCF risk categories are well-served by standard framework portfolios, and which are systematically underrepresented. Including a specific analysis of how AI governance controls cluster across the entire framework — not just within the AI domain.
-
-All findings carry confidence intervals. Null results are reported with the same rigor as positive findings. Nothing is swept under the rug.
+**Designed to scale.** The platform architecture is framework-agnostic. Every new Tier 1 study runs on the same infrastructure. Tier 2 injects from all Tier 1 outputs without schema changes. The program compounds; the cost does not.
 
 ---
 
-## Status
+## What Practitioners and Boards Take Away
 
-The platform design is complete. The research protocol is locked. The agent library — 48 specialized agents organized into 17 teams — is fully specified.
+The research is designed to produce findings that are useful at multiple altitudes.
 
-Platform testing begins next. Before any real data enters the system, the platform runs a complete test cycle with synthetic data to verify that every gate fires correctly, every checkpoint records reliably, and the governance loop works end to end.
+For practitioners managing compliance portfolios: empirical evidence about which framework relationships hold up and which do not — something to cite when making control selection and consolidation decisions that currently rest on vendor guidance.
 
-Data acquisition and analysis follow.
+For board members and oversight roles: a rigorous independent basis for asking better diligence questions about security posture — the ones management cannot easily answer with narrative.
+
+For the field: the first empirical test of the assumptions embedded in the frameworks that govern billions of dollars in enterprise security spending.
 
 ---
 
-## For Technical Readers
+## Where Things Stand
 
-The full technical documentation is in [`README.md`](README.md) and [`docs/`](docs/).
+The platform is built. The 48-agent research system — organized across 17 specialized teams covering data, analysis, statistics, governance, and dissemination — is fully specified and under active development. The research protocol is locked. The pre-registration record is live.
+
+Data acquisition begins when compute infrastructure is provisioned. Analysis follows.
+
+Findings will be published here, in academic journals, and through [The Hipster CISO](https://thehipsterciso.substack.com) in practitioner-accessible form as they emerge.
+
+---
+
+*Technical readers: [README.md](README.md) has the architecture, agent design, research protocol, and implementation detail.*
