@@ -14,6 +14,7 @@ on-device; no SaaS dependencies (ADR-0002). Connection parameters live in
 | MLflow 3 | Experiment tracking (params, metrics, artifacts) | **No** | Serverless local SQLite file | `sqlite:///mlflow.db` |
 | Phoenix | LLM trace observability (OpenTelemetry) | Yes | launchd LaunchAgent | `localhost:6006` |
 | Qdrant | Vector store for P1–P5 embeddings | Yes | Docker (Colima) via compose | `localhost:6333` (REST), `6334` (gRPC) |
+| DVC | Data/artifact versioning | No | CLI + local file remote | remote: `~/hcgrc-dvc-remote` |
 
 `run_id` is the common key across all three (ADR-0015 #79): PostgresSaver
 `thread_id`, MLflow run tag `run_id`, Phoenix span attribute `run_id`. See
@@ -110,6 +111,27 @@ qdrant_health()   # {url, reachable, collections_present, collections_missing}
 Collections (`hcgrc_controls`, `hcgrc_mappings`, `hcgrc_literature`,
 `hcgrc_findings`) are created and populated by the Embedding Agent, not here.
 
+## DVC (data versioning)
+
+Versions raw data and derived artifacts with a **local-only file remote** — data
+never leaves the machine (ADR-0002). Telemetry is disabled (`core.analytics
+false`). The remote is a sibling directory of the repo (`~/hcgrc-dvc-remote`),
+referenced by a relative path in `.dvc/config` so the committed config stays
+portable.
+
+```bash
+dvc add data/01-raw/SCF/scf.xlsx     # track a file -> writes scf.xlsx.dvc (git-committed)
+dvc push                             # copy data into the local remote
+dvc pull                             # restore data from the local remote
+dvc status                           # what's changed vs. the cache
+```
+
+The `.gitignore` re-includes `*.dvc` pointer files and `.gitkeep` under the
+`data/` tree while ignoring the actual payloads — so git versions the DVC
+metadata and directory structure, and DVC versions the data. Pointer files
+(`*.dvc`) are committed; the large files they reference live only in the DVC
+cache and local remote.
+
 ---
 
 ## Bringing up a fresh compute node
@@ -124,6 +146,7 @@ brew install colima docker docker-compose     # Docker runtime + compose
 ln -sf /opt/homebrew/bin/docker-compose ~/.docker/cli-plugins/docker-compose
 brew services start colima                    # Docker runtime, always-on
 docker compose up -d qdrant                   # vector store
+dvc remote add -d localremote ../hcgrc-dvc-remote   # data versioning (if fresh)
 # MLflow needs nothing — first configure_mlflow() creates mlflow.db
 ```
 
@@ -134,6 +157,5 @@ These remain blocked on this node and gate downstream phases:
 - **Local LLM inference** (llama.cpp / Ollama) — on-device inference for the
   analysis agents. Gated on pending-decision #1 (local vs API, model choice) —
   a research-design call, see SWARM_IMPLEMENTATION_ROADMAP.md.
-- **DVC local remote** — data versioning for SCF acquisition (Phase 1).
 - **FAISS** all-pairs index — built by the Embedding Agent alongside Qdrant.
 - **Git deploy trigger** (pull loop / webhook) — auto-deploy from the workstation.
