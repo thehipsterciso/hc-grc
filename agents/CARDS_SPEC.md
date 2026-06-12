@@ -24,7 +24,7 @@ name: agent-name-here           # Required. kebab-case. Gerund or noun form.
 description: "..."              # Required. Third person. What it does AND when to use it. Max 512 chars.
 version: 1.0.0                  # Required. Semantic versioning. Bump on any functional change.
 team: NN-team-name              # Required. Matches directory name exactly.
-status: primary | conditional   # Required. primary = runs on every pipeline; conditional = see trigger.
+status: primary | conditional | deferred  # Required. primary = active every pipeline; conditional = activates on trigger; deferred = Tier-2, not yet active.
 trigger: "always | <condition>" # Required. "always" for primary agents. Specific condition string for conditional.
 author: HC-GRC                  # Required. Fixed value.
 tags: [Tag One, Tag Two]        # Required. Title Case for words; UPPERCASE for acronyms (RLHF, NLP, STRM, SAP).
@@ -47,7 +47,9 @@ superseded_by: ""               # Required if deprecated: true. Name of replacem
 - MINOR: new handoff, new tool, new output artifact, new behavioral constraint
 - MAJOR: change to inputs/outputs schema, change to trigger condition, change to team assignment
 
-**`status`**: `primary` agents run on every pipeline. `conditional` agents require `trigger` to name the specific condition. A `primary` agent with a non-"always" trigger fails validation.
+**`status`**: `primary` agents run on every pipeline. `conditional` agents require `trigger` to name the specific condition. `deferred` agents are specified for a later tier and not yet active. A `primary` agent whose `trigger` does not begin with `always` fails validation (an explanatory `always — …` annotation is allowed).
+
+**Completeness policy**: required body sections, the three Handoffs fields, and the Evaluation-Criteria checklist are **hard errors for `primary` (active) agents** and **advisory warnings for `conditional`/`deferred`** agents, which are incomplete by design until their tier activates. Frontmatter rules apply to all cards equally.
 
 **`skills`**: Names from the AI Research Skills Library (`agents/` directory) or from the ARA pattern for custom agents. Must be resolvable to an installed skill at runtime. Empty list `[]` is valid for ARA-pattern agents.
 
@@ -128,13 +130,13 @@ When an agent is replaced:
 
 ## Auto-generation Parser Contract
 
-The parser (`tools/generate_docs.py`) reads cards by walking `agents/**/AGENT.md`. It:
-- Parses frontmatter via `python-frontmatter`
-- Validates against the Pydantic model derived from this spec
-- Extracts the four structured sections (Inputs, Outputs, Tools, Handoffs) by heading name
-- Fails loudly on any card that does not pass validation — no silent skips
+The parser (`tools/generate_docs.py`, implemented; stdlib-only) reads cards by walking `agents/**/AGENT.md`. It:
+- Parses frontmatter and splits body sections by heading
+- Validates against the rules above (hard errors for `primary`; advisory for `conditional`/`deferred`)
+- Extracts the structured sections (Inputs, Outputs, Tools, Handoffs, Skills) by heading name
+- Regenerates the derived docs into `agents/generated/` (never hand-authored): `HANDOFFS.md`, `CONTRACTS.md`, `INFRASTRUCTURE_REQUIREMENTS.md`, `CAPABILITY_MATRIX.md`, `SKILLS_INVENTORY.md`, `GATES_INVENTORY.md`, `topology.mmd`
 
-The parser is run on pre-commit and in CI on every PR. A card that fails validation blocks the PR.
+Usage: `make generate-docs` (regenerate) / `python tools/generate_docs.py --check` (validate, exit 1 on hard errors). `--check` is wired into CI once active-card errors reach zero.
 
 ---
 

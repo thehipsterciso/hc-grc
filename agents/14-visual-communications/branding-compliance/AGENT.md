@@ -3,7 +3,7 @@ name: branding-compliance
 description: Reviews all outbound HC-GRC and Hipster CISO materials for brand consistency — typography, color palettes, voice, independence positioning, disclosure requirements. Final gate before external distribution of any document, slide deck, figure, or social content.
 version: 1.0.0
 team: 14-visual-communications
-status: primary
+status: conditional
 trigger: Any content artifact intended for external distribution requires branding compliance review before release
 author: HC-GRC
 tags: [Brand Compliance, Visual Standards, Voice Consistency, Independence Positioning, Quality Gate]
