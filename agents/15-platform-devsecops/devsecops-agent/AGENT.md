@@ -59,12 +59,22 @@ Code Review Agent     SBOM Agent      VEX Agent     Dependency Management Agent
 ## Handoffs
 **Receives from**: Code Review Agent, SBOM Agent, VEX Agent, Dependency Management Agent (unresolved findings)
 **Passes to**: Orchestrator (escalations), Human (critical findings requiring manual remediation)
+**Human gate**: None — escalates critical/SLA-breaching findings to human review via the Orchestrator, but does not own a pipeline approval gate.
 
 ## Behavioral Constraints
 - Does not remediate security findings — routes and escalates
 - Security baseline changes require human approval and DVC version bump
 - Posture reports are never suppressed — all open findings appear regardless of age
 - Local-first constraint is a security control, not just a privacy requirement — document as such in posture reports
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Security finding breaches its SLA | Age check vs the Escalation SLAs table | Escalate per severity (critical → Orchestrator → human within 24h); never let it lapse silently |
+| A Team-15 security agent stops reporting | Missing expected findings feed | Flag the gap as a posture risk and alert Orchestrator — absence of findings is not evidence of safety |
+| Security baseline config missing or altered | Hash check vs DVC `baseline.yaml` | Halt posture assessment; require human approval + version bump before continuing |
+| Cross-layer systemic pattern detected | Correlation across agent findings | Escalate as a systemic finding to Orchestrator + human, not as isolated items |
 
 ## Evaluation Criteria
 - [ ] Weekly posture reports produced and DVC-versioned

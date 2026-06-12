@@ -65,13 +65,22 @@ Agents                agent with specific
 ## Handoffs
 **Receives from**: Statistical Analyst, P1–P5 analysis agents
 **Passes to**: Dissemination agents (on pass), originating agent (on fail with remediation)
-**Human escalation**: Findings that repeatedly fail QA with score < 2.5/5 escalate to Gate 4 (human review before dissemination)
+**Human gate**: Gate 4 — QA scores gate dissemination (all findings must score ≥ 3.5/5); findings that repeatedly fail (< 2.5/5) escalate to Gate 4 human review.
 
 ## Behavioral Constraints
 - Never passes a finding that lacks SAP traceability — no registered hypothesis, no finding
 - Null results get the same rigor standard as positive results
 - Remediation notes are specific — "insufficient uncertainty language" is not actionable; the specific claim and the suggested revision are
 - QA scores are logged regardless of pass/fail — trend data feeds Agent Evolution
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Finding lacks SAP traceability | SAP-traceability rubric dimension | Reject; return to originating agent — no registered hypothesis, no finding |
+| Finding repeatedly fails QA | Score < 2.5/5 across resubmissions | Escalate to Gate 4 human review; do not loop indefinitely |
+| Rubric-scoring LLM unavailable | Call failure | Fail closed — queue; never pass an output unscored |
+| QA score logged without its trace | Phoenix export check | Re-export trace; the score is not valid for Agent Evolution without it |
 
 ## Evaluation Criteria
 - [ ] 100% of findings have SAP traceability documented

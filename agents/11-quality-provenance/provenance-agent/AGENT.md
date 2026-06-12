@@ -67,6 +67,7 @@ RFC 3161 timestamp (pre-registration steps)
 ## Handoffs
 **Receives from**: All artifact-producing agents (post-operation, async)
 **Passes to**: QA Agent (provenance verification), ML Paper Agent (methods section audit trail)
+**Human gate**: None — provides the audit trail that every gate relies on (notably Gate 2 pre-registration timestamps); does not itself trigger a gate.
 
 ## Behavioral Constraints
 - Provenance records are append-only — no record is deleted or modified after creation

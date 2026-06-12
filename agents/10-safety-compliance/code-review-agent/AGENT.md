@@ -61,12 +61,22 @@ Commit / Execute    Block + flag to
 ## Handoffs
 **Receives from**: All code-generating agents (inline, synchronous)
 **Passes to**: Originating agent (pass/fail), GitHub Management Agent (SARIF reports)
+**Human gate**: None — automated security gate; critical findings auto-block and escalate, but it does not own a human approval gate.
 
 ## Behavioral Constraints
 - Secrets findings are always auto-block — never pass code with credentials or API keys
 - External network call findings in analysis code are flagged for human review, not auto-blocked
 - Review config is DVC-versioned — changing rules requires version bump and lab notebook entry
 - `.env`, `*.key`, `*.token` patterns are in the blocked list by definition — matches global CLAUDE.md security rules
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Secrets detected in a code artifact | Regex + entropy scan | Auto-block; never commit/execute; flag to originating agent and lab notebook |
+| Security ruleset unavailable or unversioned | Config load check | Fail closed — do not pass code unreviewed; escalate |
+| High-severity finding (eval/exec, known CVE) | AST analysis + CVE lookup | Block execution; return findings for fix; escalate after max retries |
+| SARIF report generation fails | Exception on report write | Retain raw findings; block merge until SARIF is produced |
 
 ## Evaluation Criteria
 - [ ] Zero secrets committed to repository (Git history audit)

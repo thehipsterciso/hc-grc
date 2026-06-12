@@ -53,12 +53,22 @@ Lab notebook entry
 ## Handoffs
 **Receives from**: CI/CD Agent (trigger on main merge)
 **Passes to**: VEX Agent (component list for vulnerability status), Dependency Management Agent (new component alerts), License Compliance Agent (license inventory)
+**Human gate**: None — generates the dependency inventory other agents and gates rely on; does not itself trigger a human approval gate.
 
 ## Behavioral Constraints
 - SBOM covers both direct and transitive dependencies
 - Every SBOM is DVC-versioned with the commit SHA that triggered generation
 - SBOM diff is mandatory — not just a point-in-time snapshot but a change record
 - CycloneDX is the primary format for VEX compatibility
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Dependency manifest unreadable or incomplete | Parse error on requirements/pyproject | Halt; never emit a partial SBOM presented as complete; alert Orchestrator |
+| SBOM generation tool failure | Non-zero exit / empty output | Retry; on persistent failure block the main-merge SBOM gate and escalate |
+| Transitive resolution incomplete | Component count vs environment snapshot mismatch | Flag as incomplete; do not version a partial SBOM as authoritative |
+| No prior SBOM for diff | Missing prior SBOM in DVC | Record a first-baseline note; proceed but mark as baseline, not diff |
 
 ## Evaluation Criteria
 - [ ] SBOM generated on every main merge

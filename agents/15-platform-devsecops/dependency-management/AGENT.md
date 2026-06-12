@@ -63,12 +63,22 @@ CI/CD Agent (test suite validation)
 ## Handoffs
 **Receives from**: VEX Agent (CVE findings), SBOM Agent (inventory)
 **Passes to**: Code Review Agent (proposed update PRs), License Compliance Agent (license findings), DevSecOps Agent (unresolved findings)
+**Human gate**: None — proposes changes that route through Code Review + CI/CD; escalates unresolved findings to DevSecOps, but does not own a human approval gate.
 
 ## Behavioral Constraints
 - Proposes updates; does not auto-apply — all changes go through Code Review Agent + CI/CD validation
 - Unpinned dependencies are flagged for pinning — `>=` version constraints without upper bound are a supply chain risk
 - License conflicts are routed to License Compliance Agent, not resolved independently
 - Proposed updates include a test plan that CI/CD Agent can verify
+
+## Failure Modes & Recovery
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Proposed update breaks the test suite | CI/CD Agent validation failure | Do not merge; revise or pin to last-good; record in the dependency log |
+| CVE with no available patch | pip-audit/VEX cross-ref shows no fix | Route to DevSecOps Agent; document a compensating control; mark `under_investigation` |
+| License conflict in a proposed dependency | License Compliance cross-check | Halt the update; route to License Compliance Agent for decision |
+| Typosquatting / suspicious new package | Name-similarity check | Block the addition; escalate to DevSecOps Agent + human |
 
 ## Evaluation Criteria
 - [ ] All `affected` VEX findings have a remediation proposal within SLA

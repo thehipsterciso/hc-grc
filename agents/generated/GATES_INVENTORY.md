@@ -7,7 +7,7 @@ Derived from each card's Handoffs `Human gate` entry.
 | Gate | Agents | Count |
 |---|---|---|
 | Gate 1 | ideation-agent, literature-agent | 2 |
-| Gate 2 | data-steward, hypothesis-formalizer | 2 |
-| Gate 3 | p1-strm-nlp, p2-control-topology, p3-regulatory-convergence, p4-risk-blindspot, p5-ai-governance, report-agent | 6 |
-| Gate 4 | repo-documentation, report-agent, statistical-analyst | 3 |
+| Gate 2 | data-steward, evaluation-agent, hypothesis-formalizer, provenance-agent | 4 |
+| Gate 3 | evaluation-agent, p1-strm-nlp, p2-control-topology, p3-regulatory-convergence, p4-risk-blindspot, p5-ai-governance, report-agent | 7 |
+| Gate 4 | qa-agent, repo-documentation, report-agent, statistical-analyst | 4 |
 | Gate 5 | ip-attribution, license-compliance, report-agent | 3 |
