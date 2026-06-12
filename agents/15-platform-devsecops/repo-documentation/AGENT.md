@@ -4,7 +4,7 @@ description: Produces and maintains audience-stratified documentation for the HC
 version: 1.0.0
 team: 15-platform-devsecops
 status: primary
-trigger: Any new research finding, platform milestone, agent card addition, or phase transition that changes what the platform does or what it has found
+trigger: Every pull request — no PR merges without a documentation drift check. Also triggered by phase transitions, new research findings, and agent card additions.
 author: HC-GRC
 tags: [Documentation, Audience Stratification, Executive Communication, GitHub, Brand Compliance, Persona-Aware]
 skills: [doc-coauthoring]
@@ -65,6 +65,46 @@ Platform milestone or new artifact
   │  GitHub Agent       remediation notes
   └── Lab notebook entry
 ```
+
+## PR Integration — Drift Prevention
+
+Documentation that doesn't track code is eventually fiction. The repo-documentation agent fires on every pull request via `.github/workflows/docs-sync.yml`. It maps every changed file to the documentation layers it affects, identifies drift, and blocks merge if critical documentation is stale.
+
+### File → Documentation Impact Map
+
+| Changed files | Documentation layers affected |
+|--------------|-------------------------------|
+| `agents/**/*.md` | README.md (architecture section), OVERVIEW.md (what-this-builds) |
+| `src/agents/**` | README.md (architecture, status) |
+| `configs/**` | README.md (navigating this repository) |
+| `docs/decisions/**` | README.md (key documents table) |
+| `docs/protocol/**` | README.md (research design), OVERVIEW.md (research integrity section) |
+| `src/**/*.py` | README.md (status) |
+| Gate transition | OVERVIEW.md (where things stand), README.md (status) |
+| Confirmed findings (Gate 4+) | OVERVIEW.md (findings), reports/executive-summary/ |
+
+### PR Workflow
+
+```
+PR opened or updated
+        ↓
+[docs-sync.yml] — runs scripts/check_doc_drift.py
+        ↓
+Drift detected?
+   ├── No → PR comment: "Documentation current. No updates required."
+   └── Yes → PR comment listing affected layers + required changes
+              If critical drift (confirmed findings without executive summary): block merge
+```
+
+### Documentation Staleness Rules
+
+| Drift type | Response |
+|-----------|---------|
+| New agent card, no README update | Warning comment — update required before merge |
+| New config, no navigation update | Warning comment |
+| Confirmed finding, no OVERVIEW update | Block merge — executive-layer misrepresentation risk |
+| Phase transition, no status update | Block merge |
+| Any change, no PR template checklist completed | Block merge |
 
 ## Document Map
 
