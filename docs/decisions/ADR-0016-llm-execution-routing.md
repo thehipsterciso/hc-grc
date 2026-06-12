@@ -1,6 +1,6 @@
 # ADR-0016: LLM Execution Routing — Local-First Compute, Subscription Frontier Reasoning
 
-**Status:** Proposed
+**Status:** Accepted (owner sign-off 2026-06-12)
 **Date:** 2026-06-12
 **Author:** Thomas Jones
 **Supersedes:** N/A
