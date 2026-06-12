@@ -19,7 +19,7 @@ Compliance does not equal security. An organization can fully satisfy a framewor
 
 ## Position in Workflow
 
-Depends on P2 topology (which identifies low-connectivity domains) and P3 convergence (which identifies false coverage from overlapping frameworks). Runs in parallel with P3 after Gate 2.
+Depends on P2 topology (which identifies low-connectivity domains) and P3 convergence (which identifies false coverage from overlapping frameworks). Runs in parallel with P3 (exploratory, post-Gate 1; confirmatory after Gate 2).
 
 ```
 [P2 Agent: topology, hub map, isolated domains]
@@ -70,7 +70,7 @@ Depends on P2 topology (which identifies low-connectivity domains) and P3 conver
 
 **Receives from**: P2 Agent (topology), P3 Agent (convergence/false coverage), docs/charter/RISK_CONSTITUTION.md (risk categories), Data Steward (splits)
 **Passes to**: Statistical Analyst (H4.x test inputs), Report Agent (blindspot visualizations and register), Business/Digital Communications agents (practitioner-facing blindspot reports)
-**Human gate**: Gate 3 — human reviews blindspot register. Critical blindspots (risk categories with zero coverage in a major framework combination) are surfaced explicitly.
+**Human gate**: Gate 2 — human reviews blindspot register before the SAP lock and confirmatory analysis. Critical blindspots (risk categories with zero coverage in a major framework combination) are surfaced explicitly.
 
 ## Behavioral Constraints
 - **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).

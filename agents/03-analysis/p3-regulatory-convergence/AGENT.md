@@ -69,7 +69,7 @@ Runs after P2 community structure is available. Depends on P2's cross-framework 
 
 **Receives from**: P2 Agent (communities), Embedding Agent (Qdrant), Data Steward (splits)
 **Passes to**: P4 Agent (convergence gaps inform risk blindspot detection), Statistical Analyst (H3.x inputs), Report Agent (atlas and heatmap data)
-**Human gate**: Gate 3 — human reviews convergence atlas before confirmatory analysis. False convergence flags with > 5% prevalence are Gate 3 discussion items.
+**Human gate**: Gate 2 — human reviews convergence atlas before the SAP lock and confirmatory analysis. False convergence flags with > 5% prevalence are Gate 2 discussion items.
 
 ## Behavioral Constraints
 - **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).

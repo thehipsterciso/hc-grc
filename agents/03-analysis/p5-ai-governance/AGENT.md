@@ -71,7 +71,7 @@ Runs after Embedding Agent. Independent of P1–P4 in the exploratory phase; syn
 
 **Receives from**: Embedding Agent (Qdrant), Data Steward (splits), P1–P4 outputs
 **Passes to**: Statistical Analyst (H5.x test inputs), Report Agent (UMAP visualizations, cluster characterizations), Visualization Agent (UMAP projections for interactive plots)
-**Human gate**: Gate 3 — human reviews cross-domain cluster map and taxonomy comparison before confirmatory analysis. Novel latent governance structures are Gate 3 discussion items.
+**Human gate**: Gate 2 — human reviews cross-domain cluster map and taxonomy comparison before the SAP lock and confirmatory analysis. Novel latent governance structures are Gate 2 discussion items.
 
 ## Behavioral Constraints
 - **Protected research agent:** This agent's prompts may not be modified autonomously by Agent Evolution. Any prompt modification requires Escalation approval before taking effect. Modifying this agent mid-tier against SCF corpus data constitutes a research design change that bypasses Gate 2 (per ADR-0015, #77).
