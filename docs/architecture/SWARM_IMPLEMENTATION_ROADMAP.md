@@ -191,9 +191,9 @@ Phase 6 runs in parallel with Phases 1-5 (support infrastructure is built as nee
 
 These questions were not resolved by the research in this session. They require a separate decision loop before Phase 3 implementation:
 
-1. **Local LLM vs API:** Which model backs the analysis agents? Local Ollama (data-sovereign, slower) vs API (faster, data leaves machine)? The data-sovereign constraint from ADR-0006 suggests local — but 1,400 controls × 5 analysis modules is a significant compute load.
+1. **Local LLM vs API:** ✅ **RESOLVED by ADR-0016 (2026-06-12).** Routing is by stakes: deterministic ML + low-stakes/high-volume reasoning run on local models (Mac mini, 24/7); only high-stakes reasoning uses the frontier tier (Claude Max 20x via Agent SDK). No metered API. See `agents/MODEL_TIER_ASSIGNMENTS.md`.
 
-2. **Per-control batch size for P1 map-reduce:** What is the optimal `batch_size` for `chunk_controls()`? Too small → too many parallel branches → rate limits. Too large → long per-branch execution → latency equivalent to sequential.
+2. **Per-control batch size for P1 map-reduce:** ✅ **`batch_size = 50` LOCKED (2026-06-12).** Checkpoint throughput is not the bottleneck: PostgresSaver write p95 = **12.7 ms** (threshold 150 ms), read p95 = **1.2 ms** (threshold 75 ms) on `hc-macmini` over 20 runs (`tests/benchmarks/bench_checkpointer.py`, #112). At ~13 ms/checkpoint, 50 parallel branches are comfortably within the write budget. The binding ceiling is therefore **local-model serving concurrency**, not checkpointing — `batch_size` will be re-confirmed against the Tier-2 serving benchmark when #115 lands, but 50 is validated-safe from the checkpoint-integrity standpoint (ADR-0015 #76).
 
 3. **Gate UI:** How does the human receive and respond to gate interrupts? CLI, web UI, or Slack bot? The current architecture is agnostic — any of the three work. A decision should be made before Phase 2.
 
