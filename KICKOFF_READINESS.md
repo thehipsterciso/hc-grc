@@ -87,41 +87,36 @@ subscription reasoning + gates as one working system. Everything after is breadt
 
 ## 5. Prioritized backlog
 
+> **Work is tracked in GitHub issues (#109–#127).** This list is the index; the
+> issues are the system of record. `gh issue list --state open`.
+
 **P0 — blockers**
-1. **[OWNER]** Sign ADR-0016
-2. Complete Phase-0 sign-off (Track A, 5 items)
-3. Build `reasoning_client` + rate-window backpressure
-4. Stand up local serving + select Tier-2 model
-5. Implement 4 data-pipeline agents + acquire SCF (SHA-256 + DVC)
+1. **[OWNER]** Sign ADR-0016 — **#117**
+2. Complete Phase-0 sign-off (Track A) — **#109 #110 #111 #112 #113**
+3. Build `reasoning_client` + rate-window backpressure — **#114**
+4. Stand up local serving + select Tier-2 model — **#115**
+5. Implement 4 data-pipeline agents + acquire SCF (SHA-256 + DVC) — **#116**
 
 **P1 — specs that unblock build (cheap, parallel with P0)**
 6. ~~Create Report Agent card~~ ✅ 2026-06-12
 7. ~~Define ARA artifact schema~~ ✅ 2026-06-12 (`ara/ARA_SPEC.md`; model codegen pending)
 8. ~~Add tier assignment to all cards~~ ✅ 2026-06-12 (`agents/MODEL_TIER_ASSIGNMENTS.md`; per-card field pending)
-9. **[OWNER]** Resolve DIVERGENCE-01
+9. **[OWNER]** Resolve DIVERGENCE-01 — **existing #101** (closed; reopen when Gate 2 approaches)
 10. ~~Reconcile protected-agent name drift~~ ✅ 2026-06-12 (GATES.md + ADR-0015 erratum)
-10a. **Reconcile gate-number drift** (NEW): analysis cards off-by-one vs locked GATES.md/graph.py firewall
+10a. **Reconcile gate-number drift** — **#118**
 
 **P2 — first analysis slice**
-11. Implement P1 (STRM NLP) end-to-end → run Gate 1
+11. Implement P1 (STRM NLP) end-to-end → run Gate 1 — **#122**
 
 **P3 — fan-out (only after the slice works)**
-12. Implement P2/P4/P5 (local ML) + P3 (frontier reasoning)
-13. hypothesis-formalizer + statistical-analyst → Gate 2 firewall live
-14. Schema hygiene: 30 cards missing Tools sections; MCP registry; card validator
+12. Implement P2/P4/P5 (local ML) + P3 (frontier reasoning) — **#123**
+13. hypothesis-formalizer + statistical-analyst → Gate 2 firewall live — **#124**
+14. Schema hygiene: Tools sections **#119**; MCP registry **#120**; card validator **#121**
 
 **Context-persistence & Agent-Evolution loop** (spec done 2026-06-12; build pending)
-15. Orchestrator **run-start grounding**: load `PROJECT_STRUCTURE.md` at run start;
-    block artifact writes outside canonical locations; new top-level dir ⇒ ADR.
-    (Spec: orchestrator card v1.1.0 + `PROJECT_STRUCTURE.md`.) — *Build wires it*
-16. **Close the Agent-Evolution read-back loop**: the platform writes failures
-    (`INCIDENTS.md`, `failure_events`, `lab_notebook.md`) but does not yet *read*
-    them back. Build the pre-phase memory load (open incidents + adversarial
-    findings + recent failure_events → orchestrator context) so the platform
-    actually learns from its mistakes rather than only recording them.
-    (Spec: orchestrator card v1.1.0; ADR-0015 #72 is the design.) — *Build*
-17. Make adversarial findings a **living register** (extend `INCIDENTS.md` or add
-    `docs/decisions/ADVERSARIAL_FINDINGS.md`), content-addressed, consumed by #16.
+15. Orchestrator **run-start grounding** (spec done: card v1.1.0 + `PROJECT_STRUCTURE.md`) — **#125**
+16. **Close the Agent-Evolution read-back loop** (pre-phase memory load; ADR-0015 #72) — **#126**
+17. Adversarial findings **living register** (consumed by #126) — **#127**
 
 **P4 — deferred, NOT needed to kick off**
 Dissemination (team 12), business/digital (13), most of inference/training/
