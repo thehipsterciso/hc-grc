@@ -60,7 +60,7 @@ Human distribution   Return to producing
 | Remediation notes (on fail) | Producing agent | Markdown | Specific, actionable |
 
 ## Handoffs
-**Receives from**: Business Presentation Agent, Whitepaper Agent, Brochure Agent, Social Media Agent, Chart Agent, Visualization Agent
+**Receives from**: Repo Documentation Agent (executive-mode content: OVERVIEW.md, RESEARCH_BRIEF.md, reports/executive-summary/), Business Presentation Agent, Whitepaper Agent, Brochure Agent, Social Media Agent, Chart Agent, Visualization Agent
 **Passes to**: Human (cleared for distribution)
 
 ## Non-Negotiable Rules (from brand positioning)

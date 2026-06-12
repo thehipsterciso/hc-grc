@@ -1,0 +1,47 @@
+# CODEOWNERS — HC-GRC Research Integrity Protection
+#
+# These paths cover pre-registered analysis, locked protocol documents, and
+# PROTECTED agents. Changes require Thomas Jones (@thehipsterciso) review.
+# This is a single-author project; CODEOWNERS scaffolds for future collaborators.
+#
+# Enforcement: add branch protection rules on main + pre-registration branches
+# that require CODEOWNERS review before merge.
+
+# Global fallback — all files require review
+* @thehipsterciso
+
+# ── Pre-registration and protocol ─────────────────────────────────────────────
+# Locked SAP, pre-registration ledger, gate definitions. Any change here is a
+# protocol event that must be logged in the PREREGISTRATION_LEDGER.
+docs/protocol/               @thehipsterciso
+docs/protocol/PREREGISTRATION_LEDGER.md @thehipsterciso
+
+# ── Confirmatory analysis ──────────────────────────────────────────────────────
+# Test-split analysis. Changes here without a Gate 2 timestamp are a SAP violation.
+analysis/02-confirmatory/    @thehipsterciso
+
+# ── Raw and processed data ────────────────────────────────────────────────────
+# CC BY-ND 4.0 (SCF). No derived datasets, embeddings, or indices leave the machine.
+data/                        @thehipsterciso
+
+# ── PROTECTED analysis agents (P1–P5) ─────────────────────────────────────────
+# Per ADR-0015: Agent Evolution cannot modify these agents autonomously.
+# Prompt changes require Escalation approval.
+agents/03-analysis/          @thehipsterciso
+
+# ── PROTECTED statistical and research agents ─────────────────────────────────
+agents/04-statistical/statistical-analyst/ @thehipsterciso
+agents/01-research/hypothesis-formalizer/  @thehipsterciso
+
+# ── Model artifacts ───────────────────────────────────────────────────────────
+models/                      @thehipsterciso
+
+# ── Executive documentation ───────────────────────────────────────────────────
+# Requires Branding Compliance Agent review + human sign-off before merge.
+OVERVIEW.md                  @thehipsterciso
+RESEARCH_BRIEF.md            @thehipsterciso
+reports/executive-summary/   @thehipsterciso
+
+# ── Infrastructure and CI ─────────────────────────────────────────────────────
+.github/workflows/           @thehipsterciso
+.github/CODEOWNERS           @thehipsterciso

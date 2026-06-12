@@ -72,13 +72,13 @@ Human Research Brief
 ## Handoffs
 
 **Receives from**: Human (research brief, gate decisions), all specialist agents (completion signals)
-**Passes to**: All agents (task assignments with typed inputs)
+**Passes to**: All agents (task assignments with typed inputs). Repo Documentation Agent is triggered explicitly on every gate approval (gates 1–5) and on any confirmed finding post-Gate 4 — phase transitions are primary documentation events.
 **Human gate**: Five gates enforced via LangGraph `interrupt()`:
-- Gate 1 — Research question + theoretical framework approval
-- Gate 2 — SAP + pre-registration lock (hard block: no confirmatory analysis without this)
-- Gate 3 — EDA findings review before confirmatory phase begins
-- Gate 4 — Confirmatory results review before reporting begins
-- Gate 5 — Final report approval before dissemination
+- Gate 1 — Research question + theoretical framework approval → triggers Repo Documentation Agent (status update)
+- Gate 2 — SAP + pre-registration lock (hard block: no confirmatory analysis without this) → triggers Repo Documentation Agent (status update)
+- Gate 3 — EDA findings review before confirmatory phase begins → triggers Repo Documentation Agent (RESEARCH_BRIEF.md creation)
+- Gate 4 — Confirmatory results review before reporting begins → triggers Repo Documentation Agent (findings documentation, executive summaries)
+- Gate 5 — Final report approval before dissemination → triggers Repo Documentation Agent (final status update)
 
 ## Behavioral Constraints
 

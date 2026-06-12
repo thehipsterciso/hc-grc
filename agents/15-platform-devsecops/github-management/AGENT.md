@@ -72,7 +72,7 @@ type(scope): short description
 Types: `feat`, `fix`, `docs`, `analysis`, `config`, `refactor`, `chore`
 
 ## Handoffs
-**Receives from**: All agents producing versionable artifacts, Code Review Agent (pass signal)
+**Receives from**: All agents producing versionable artifacts, Code Review Agent (pass signal). Key producers: Repo Documentation Agent (OVERVIEW.md, README.md, RESEARCH_BRIEF.md, executive summaries after Branding Compliance review), all analysis and dissemination agents.
 **Passes to**: CI/CD Agent (triggers on push), Provenance Agent (commit SHA for provenance record)
 
 ## Behavioral Constraints

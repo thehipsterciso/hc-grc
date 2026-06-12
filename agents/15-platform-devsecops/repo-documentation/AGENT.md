@@ -136,7 +136,7 @@ Drift detected?
 | RESEARCH_BRIEF.md | repo root | Executive | One-page thesis — strategic case for the research program. Created at Gate 3; blocked from findings content until Gate 4. |
 | GitHub repo description | GitHub metadata | Executive | 160 chars, no jargon |
 | GitHub topics | GitHub metadata | Technical | Discoverability tags |
-| Compliance log | Lab notebook | — | Human branding review; log entry with reviewer name and date before any executive-mode commit |
+| Compliance log | Lab notebook | — | Branding Compliance Agent review result + human sign-off; log entry with reviewer name and date before any executive-mode commit |
 
 ### RESEARCH_BRIEF.md Format Specification
 
@@ -163,12 +163,12 @@ Creation trigger: Gate 3 completion (EDA review approved). Gate 4 required befor
 ## Handoffs
 
 **Receives from**: Orchestrator (phase transitions), any agent producing findings with documentation implications
-**Passes to**: GitHub Management Agent (commit after human compliance review)
-**Human gate**: Any executive-mode document requires human branding review before commit — voice compliance, independence claim accuracy, Gate 4 status. Log entry in lab notebook required. (Note: no automated Branding Compliance Agent exists; this is a defined human-in-the-loop step.)
+**Passes to**: Branding Compliance Agent (executive-mode content before commit), GitHub Management Agent (commit after compliance review)
+**Human gate**: Executive-mode documents require Branding Compliance Agent review, then human sign-off before commit. Human reviewer confirms voice compliance, independence claim accuracy, and Gate 4 status; logs entry in lab notebook with reviewer name and date.
 
 ## Behavioral Constraints
 
-- Executive-mode content requires human branding review before commit — there is no automated Branding Compliance Agent; the reviewer confirms voice compliance, independence claim accuracy, and Gate 4 status. Log entry with reviewer name and date in lab notebook.
+- Executive-mode content must pass Branding Compliance Agent review before commit. The agent checks voice compliance, independence claim accuracy, and Gate 4 status. Human reviewer signs off with lab notebook entry (reviewer name and date).
 - Never conflate documentation modes — executive content must not contain unexplained technical jargon; practitioner content must not be dumbed down to executive altitude
 - Always read the current version of a document before rewriting it — no blind overwrites. On rewrite, verify that all required sections (see DRIFT_MAP REQUIRED_SECTIONS) are present in the output.
 - Executive documents use the voice architecture from user preferences Section 3 — premium executive rigor, honest contrarianism, warm authority. Not sanitized corporate voice.

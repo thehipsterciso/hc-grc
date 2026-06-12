@@ -101,6 +101,7 @@ entry_id: LEDGER-0001
 date: 2026-06-09
 author: Thomas Jones
 rfc3161_tsr: protocol/registration/LEDGER-0001.tsr
+status: pre-lock | draft — content_hash and git_commit_sha are populated at formal commit to pre-registration branch; hashes below are placeholders until that event
 ---
 
 ### Summary
@@ -130,6 +131,7 @@ entry_id: LEDGER-0002
 date: 2026-06-11
 author: Thomas Jones
 rfc3161_tsr: protocol/registration/LEDGER-0002.tsr
+status: pre-lock | draft — content_hash and git_commit_sha are populated at formal commit to pre-registration branch; hashes below are placeholders until that event
 ---
 
 ### Summary
@@ -188,6 +190,7 @@ entry_id: LEDGER-0003
 date: 2026-06-11
 author: Thomas Jones
 rfc3161_tsr: protocol/registration/LEDGER-0003.tsr
+status: pre-lock | draft — content_hash and git_commit_sha are populated at formal commit to pre-registration branch; hashes below are placeholders until that event
 ---
 
 ### Summary
