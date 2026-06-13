@@ -99,6 +99,13 @@ class HCGRCState(TypedDict):
     # Each entry is a FormalHypothesis dict (see src/agents/hypothesis_formalizer).
     hypothesis_set: Annotated[list[dict[str, Any]], lambda a, b: a + b]
 
+    # ── Orchestrator run-start grounding ──────────────────────────────────────
+    # Produced by t00_orchestrator_node via the reasoning_client (Tier 2). The
+    # orchestrator reasons about the run *inside the graph* rather than the work
+    # being done by hand outside the framework (ADR-0016 — the agency contract).
+    # None when the reasoning backend was unavailable (graceful degradation).
+    run_grounding: str | None
+
     # ── Escalation ────────────────────────────────────────────────────────────
     escalation_issue_number: int | None  # GitHub issue number if parked
     escalation_reason: str | None
@@ -130,6 +137,7 @@ def initial_state(run_id: str | None = None) -> HCGRCState:
         eda_artifacts=[],
         eda_agent_statuses=[],
         hypothesis_set=[],
+        run_grounding=None,
         escalation_issue_number=None,
         escalation_reason=None,
         messages=[],
