@@ -43,10 +43,12 @@ PyYAML>=6.0
 # Experiment tracking (MLflow 3 — local SQLite backend; file store deprecated)
 mlflow>=3.1,<4
 
-# Agent orchestration
-langgraph>=0.2.28
-langgraph-checkpoint-postgres>=1.0.4
-langchain-core>=0.2.28
+# Agent orchestration.
+# Bounded to the installed major versions — the prior `>=0.2.28` ranges silently
+# resolved to 1.x/3.x, making installs non-reproducible (Hardening pass 1, #13).
+langgraph>=1.2,<2
+langgraph-checkpoint-postgres>=3.1,<4
+langchain-core>=1.4,<2
 
 # LLM execution routing (ADR-0016) — reasoning_client backends.
 # Tier 2 (local LLM): langchain-ollama drives the on-device Ollama server.

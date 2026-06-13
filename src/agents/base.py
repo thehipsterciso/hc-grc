@@ -137,11 +137,19 @@ class BaseResearchAgent(ABC):
         LangGraph-compatible call: returns a partial state update dict.
 
         Dispatches to run_exploratory() or run_confirmatory() based on phase.
+
+        The canonical phase values written by the graph are phase_0 / phase_1 /
+        phase_2 (see state.Phase). Exploratory analysis runs in phase_0/phase_1;
+        confirmatory analysis runs in phase_2, where the Gate 2 SAP firewall
+        (assert_gate2_approved) must hold before any test-split access. The legacy
+        string aliases "exploratory"/"confirmatory" are accepted defensively.
+        (Hardening pass 1, #17: phase_2 previously hit the else-branch and raised,
+        so run_confirmatory and the SAP firewall were unreachable.)
         """
         phase = state.get("phase", "phase_0")
-        if phase in ("exploratory", "phase_0", "phase_1"):
+        if phase in ("phase_0", "phase_1", "exploratory"):
             return self.run_exploratory(state)
-        elif phase == "confirmatory":
+        elif phase in ("phase_2", "confirmatory"):
             assert_gate2_approved(state)
             return self.run_confirmatory(state)
         else:
