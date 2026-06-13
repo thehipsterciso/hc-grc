@@ -19,7 +19,8 @@ Passes are never edited after they are written. New passes are appended.
 
 | Pass | Date (UTC) | Confirmed | Fixed | Status |
 |------|------------|-----------|-------|--------|
-| 1 | 2026-06-13 | 39 (7H/19M/13L) | 5 (batch 1) | in progress |
+| 1 | 2026-06-13 | 39 (7H/19M/13L) | 39 | ✅ complete |
+| 2 | 2026-06-13 | _pending workflow_ | — | re-audit running |
 
 ---
 
@@ -71,7 +72,17 @@ Passes are never edited after they are written. New passes are appended.
 | 38 | #181 | low | `phoenix` | phoenix_setup.py | instrument_langchain() is documented as idempotent but has no guard — repeat calls double- | open |
 | 39 | #182 | low | `phoenix` | phoenix_setup.py | Docstring asserts traces are 'buffered' on server outage, but the configured processor pro | open |
 
-### Fix batches
-- **Batch 1 (surgical highs + deps):** #144 (pyproject build-backend), #147 (checkpointer self-healing pool), #176 (migration advisory lock), #160 (base.py phase_2 dispatch / SAP firewall reachable), #156 (dependency pins). 5 issues closed.
+### Fix batches (all 39 closed)
+- **Batch 1 — surgical highs + deps** (`1761f7f`): #144 pyproject build-backend, #147 checkpointer self-healing pool, #176 migration advisory lock, #160 base.py phase_2 dispatch / SAP firewall, #156 dependency pins.
+- **Batch 2 — reasoning_client reliability** (`3c119cc`): #145/#158 timeouts, #146 metered-API scrub, #157 retry/backoff, #159/#172/#175 robust JSON, #173/#174 cheap liveness, #151 unit tests.
+- **Batch 3 — Phoenix/OTel wiring** (`30e70ae`): #149 instrument on run, #150/#168 T3 + run_id spans, #166/#169/#182 BatchSpanProcessor, #167 run_id context, #181 idempotency. Verified spans land in Phoenix.
+- **Batch 4 — LangGraph fault isolation & interrupt safety** (`2f06f5b`): #148 agent fault isolation, #163/#180 response validation, #177 idempotency guard, #164/#178 gate_2 prereq gate_status, #165 RetryPolicy, #179 recursion limit, #162 resume_run, #154 test.
+- **Batch 5 — tests & config** (`cc99013`): #152/#155 gate decision coverage, #153 deterministic grounding test, #161 checkpointer tests, #170 split determinism, #171 config validation.
 
-_Remaining 34 findings fixed in subsequent batches; re-audit (pass 2) after the open set is cleared._
+**Pass 1 result: 39/39 fixed, 89 tests passing.** Pass 2 re-audits the hardened code for regressions and any newly-introduced issues.
+
+---
+
+## Pass 2 — 2026-06-13
+
+_Re-audit of the hardened code (same dimensions, current sources). Findings recorded when the workflow completes._
