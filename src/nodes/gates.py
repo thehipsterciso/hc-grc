@@ -57,9 +57,11 @@ def _rejection_event(gate_id: str, rationale: str, run_id: str) -> dict[str, Any
 
 
 _VALID_DECISIONS = {"approved", "rejected", "deferred"}
-# Terminal decisions stop a gate from re-firing on re-entry. 'rejected' is NOT
-# terminal — it routes back for re-review and must re-prompt the operator.
-_TERMINAL_DECISIONS = {"approved", "deferred"}
+# Only 'approved' is terminal — it stops the gate re-firing on re-entry (don't
+# re-unlock). 'rejected' routes back for re-review and 'deferred' parks the run for
+# the operator to re-trigger later; BOTH must re-fire the interrupt when the gate
+# is re-entered, so neither is terminal (pass-3 #5).
+_TERMINAL_DECISIONS = {"approved"}
 
 
 def _parse_operator_response(resp: Any, gate_id: str) -> tuple[str, str]:
@@ -89,7 +91,7 @@ def _parse_operator_response(resp: Any, gate_id: str) -> tuple[str, str]:
 
 def _already_decided(state: HCGRCState, gate_id: str) -> bool:
     """
-    True if this gate already holds a TERMINAL decision (approved/deferred).
+    True if this gate already holds a TERMINAL decision (approved only).
 
     Guards against a re-invocation re-firing the interrupt and re-running
     downstream effects on top of a terminal decision (#177). A 'rejected' record
@@ -108,11 +110,43 @@ def _finalize_gate(state: HCGRCState, gate_id: str, decision: str,
     """Build the gate node's state update: failure event (if not approved) + the
     authoritative gate_status record (written only by gate_coordinator_node)."""
     update: dict[str, Any] = {}
-    if decision != "approved":
+    if decision == "rejected":
+        # 'deferred' is a park, not a failure — only a rejection is a failure_event
+        # (a deferred decision recorded as a rejection mislabels the audit trail).
         update["failure_events"] = [_rejection_event(gate_id, rationale, state["run_id"])]
     from .gate_coordinator import gate_coordinator_node
     update.update(gate_coordinator_node(state, gate_id, decision, rationale, reviewer=reviewer))
     return update
+
+
+def _run_gate(state: HCGRCState, gate_id: str, proposal: dict[str, Any]) -> dict[str, Any]:
+    """
+    Drive one gate: idempotency guard, then interrupt() the operator and finalize.
+
+    Validation runs INSIDE a re-prompt loop (pass-3 #3): interrupt() consumes and
+    persists the resume value before validation, so raising on a malformed value
+    would strand it in the checkpoint and replay it forever. Instead, a malformed
+    or mis-correlated response re-fires a fresh interrupt (next resume index)
+    carrying the error, so the operator can re-submit and actually recover.
+
+    Gate-id correlation (pass-3 #4): if the operator response names a gate, it must
+    match this gate — a stale/misrouted decision cannot be applied to the wrong gate.
+    """
+    if _already_decided(state, gate_id):
+        return {}
+    current = proposal
+    while True:
+        resp = interrupt(current)
+        if isinstance(resp, dict) and resp.get("gate_id") not in (None, gate_id):
+            current = {**proposal, "error": (
+                f"response gate_id {resp.get('gate_id')!r} does not match {gate_id}")}
+            continue
+        try:
+            decision, rationale = _parse_operator_response(resp, gate_id)
+        except ValueError as exc:
+            current = {**proposal, "error": str(exc)}
+            continue
+        return _finalize_gate(state, gate_id, decision, rationale)
 
 
 # ── Gate 1 ────────────────────────────────────────────────────────────────────
@@ -166,10 +200,7 @@ def gate_1_node(state: HCGRCState) -> dict[str, Any]:
 
     # interrupt() parks the graph and surfaces proposal to operator.
     # The operator's response dict is the return value of interrupt().
-    if _already_decided(state, "gate_1"):
-        return {}
-    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_1")
-    return _finalize_gate(state, "gate_1", decision, rationale)
+    return _run_gate(state, "gate_1", proposal)
 
 
 # ── Gate 2 ────────────────────────────────────────────────────────────────────
@@ -189,16 +220,28 @@ def gate_2_node(state: HCGRCState) -> dict[str, Any]:
       - Hypothesis set complete and committed to PREREGISTRATION_LEDGER.md
       - Data split idempotency verified (data_split_verified == True)
     """
-    # Verify hard prerequisites before surfacing the gate
+    # Verify hard prerequisites before surfacing this irreversible gate. Gate 2
+    # unlocks the test split, so the machine-checkable preconditions for a sound
+    # exploratory→confirmatory transition are ALL enforced here, not just the data
+    # split (pass-3 #1): exploratory analysis must be complete and a non-empty
+    # pre-registered hypothesis set must exist before the operator can even be asked.
     hard_failures = []
     if not state.get("data_split_verified"):
         hard_failures.append("data_split_verified is False — run compute_data_split() first")
+    if not state.get("exploratory_complete"):
+        hard_failures.append(
+            "exploratory_complete is False — P1-P5 exploratory analysis has not finished")
+    if not state.get("hypothesis_set"):
+        hard_failures.append(
+            "hypothesis_set is empty — no pre-registered hypotheses to lock at Gate 2")
 
     if hard_failures:
-        # Write an authoritative gate_status record (decision=rejected, system
-        # reviewer) so the router and operator see the failure, instead of
-        # returning only a failure_event and letting the router silently park the
-        # run as if Gate 2 had never fired (#164/#178).
+        # Write an authoritative gate_status record so the router and operator see
+        # the failure (#164/#178). Decision is DEFERRED, not rejected: a system
+        # prerequisite failure must PARK the run (route_after_gate_2 deferred→END),
+        # not feed it into the operator reject→revise→re-review loop, which would
+        # spin forever because re-running exploratory cannot satisfy an unmet
+        # prerequisite (pass-3 #20). The operator re-triggers once prereqs are met.
         rationale = "Hard prerequisite failure: " + "; ".join(hard_failures)
         update = {
             "failure_events": [
@@ -213,7 +256,7 @@ def gate_2_node(state: HCGRCState) -> dict[str, Any]:
         }
         from .gate_coordinator import gate_coordinator_node
         update.update(
-            gate_coordinator_node(state, "gate_2", "rejected", rationale, reviewer="system")
+            gate_coordinator_node(state, "gate_2", "deferred", rationale, reviewer="system")
         )
         return update
 
@@ -240,10 +283,7 @@ def gate_2_node(state: HCGRCState) -> dict[str, Any]:
         run_id=state["run_id"],
     )
 
-    if _already_decided(state, "gate_2"):
-        return {}
-    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_2")
-    return _finalize_gate(state, "gate_2", decision, rationale)
+    return _run_gate(state, "gate_2", proposal)
 
 
 # ── Gate 3 ────────────────────────────────────────────────────────────────────
@@ -313,10 +353,7 @@ def gate_3_node(state: HCGRCState) -> dict[str, Any]:
         run_id=state["run_id"],
     )
 
-    if _already_decided(state, "gate_3"):
-        return {}
-    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_3")
-    return _finalize_gate(state, "gate_3", decision, rationale)
+    return _run_gate(state, "gate_3", proposal)
 
 
 # ── Gate 4 ────────────────────────────────────────────────────────────────────
@@ -384,10 +421,7 @@ def gate_4_node(state: HCGRCState) -> dict[str, Any]:
         run_id=state["run_id"],
     )
 
-    if _already_decided(state, "gate_4"):
-        return {}
-    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_4")
-    return _finalize_gate(state, "gate_4", decision, rationale)
+    return _run_gate(state, "gate_4", proposal)
 
 
 def gate_5_node(state: HCGRCState) -> dict[str, Any]:
@@ -407,7 +441,4 @@ def gate_5_node(state: HCGRCState) -> dict[str, Any]:
         ],
         run_id=state["run_id"],
     )
-    if _already_decided(state, "gate_5"):
-        return {}
-    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_5")
-    return _finalize_gate(state, "gate_5", decision, rationale)
+    return _run_gate(state, "gate_5", proposal)

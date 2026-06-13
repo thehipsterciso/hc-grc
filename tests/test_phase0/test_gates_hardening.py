@@ -52,15 +52,15 @@ def test_already_decided():
     assert _already_decided(state, "gate_2") is False
 
 
-def test_rejected_is_not_terminal_so_gate_can_re_review():
-    # pass-2 #184/#187 regression guard: a rejected Gate 2 must re-fire on the
-    # reject → revise → re-review loop, so it must NOT count as already-decided.
+def test_only_approved_is_terminal():
+    # pass-2 #184/#187 + pass-3 #5: rejected re-reviews and deferred is re-triggerable,
+    # so only 'approved' is terminal (stops the gate re-firing on re-entry).
     state = initial_state(run_id="g-rej")
-    state["gate_status"] = {"gate_2": {"decision": "rejected"}}
-    assert _already_decided(state, "gate_2") is False
-    for terminal in ("approved", "deferred"):
-        state["gate_status"] = {"gate_2": {"decision": terminal}}
-        assert _already_decided(state, "gate_2") is True
+    for non_terminal in ("rejected", "deferred"):
+        state["gate_status"] = {"gate_2": {"decision": non_terminal}}
+        assert _already_decided(state, "gate_2") is False
+    state["gate_status"] = {"gate_2": {"decision": "approved"}}
+    assert _already_decided(state, "gate_2") is True
 
 
 def test_retry_predicate_excludes_governance_and_logic_errors():
@@ -81,10 +81,12 @@ def test_retry_predicate_excludes_governance_and_logic_errors():
 
 
 def test_gate2_prereq_failure_writes_gate_status():
-    state = initial_state(run_id="g-002")  # data_split_verified is False
+    state = initial_state(run_id="g-002")  # prerequisites unmet
     update = gate_2_node(state)
     assert "gate_2" in update["gate_status"]
-    assert update["gate_status"]["gate_2"]["decision"] == "rejected"
+    # Deferred (a park), not rejected — a prereq failure must not feed the
+    # reject→re-review loop (pass-3 #20).
+    assert update["gate_status"]["gate_2"]["decision"] == "deferred"
     assert update["gate_status"]["gate_2"]["reviewer"] == "system"
     assert update["failure_events"][0]["event_type"] == "gate_prerequisite_failure"
 
@@ -104,11 +106,20 @@ def test_resume_run_approves_gate_1():
     assert decision == "approved"
 
 
-def test_resume_run_rejects_malformed_decision():
+def test_resume_run_recovers_from_malformed_decision():
+    # pass-3 #3: a malformed resume must NOT brick the gate — it re-prompts, and a
+    # subsequent well-formed resume finalizes the gate (recovery actually works).
     cp = MemorySaver()
     graph = build_graph(checkpointer=cp)
     cfg = {"configurable": {"thread_id": "resume-002"}}
     graph.invoke(initial_state(run_id="resume-002"), config=cfg)  # parks at gate_1
 
-    with pytest.raises(ValueError, match="decision"):
-        resume_run("resume-002", "totally-bogus", "x", cp)
+    # Malformed decision: does not raise, does not record a terminal decision.
+    resume_run("resume-002", "totally-bogus", "x", cp)
+    parked = build_graph(checkpointer=cp).get_state(cfg).values
+    assert "gate_1" not in parked.get("gate_status", {})
+
+    # Well-formed decision now recovers and finalizes.
+    resume_run("resume-002", "approved", "ok", cp)
+    decided = build_graph(checkpointer=cp).get_state(cfg).values
+    assert decided["gate_status"]["gate_1"]["decision"] == "approved"

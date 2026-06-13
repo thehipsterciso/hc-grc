@@ -95,18 +95,20 @@ def get_checkpointer(use_memory: bool = False):
         # (otherwise the pool's worker thread cannot be joined during interpreter
         # finalization, raising a noisy PythonFinalizationError).
         atexit.register(pool.close)
-        checkpointer = PostgresSaver(pool)
-
         # Serialize schema migrations across processes with a session advisory
-        # lock so concurrent initializers don't race on checkpoint_migrations
-        # (Hardening pass 1, #33).
+        # lock (pass-1 #33). The lock and the migration DDL MUST run on the SAME
+        # connection — pg_advisory_lock is session-scoped, and a pool-backed
+        # PostgresSaver.setup() would check out a *different* connection for the
+        # DDL, leaving the lock ineffective (pass-3 #2). So run setup() through a
+        # saver bound to the single locked connection, then return the pool-backed
+        # saver for normal operation.
         with pool.connection() as conn:
             conn.execute("SELECT pg_advisory_lock(%s)", (_MIGRATION_LOCK_KEY,))
             try:
-                checkpointer.setup()  # creates checkpoint tables if they don't exist
+                PostgresSaver(conn).setup()  # DDL on the locked connection
             finally:
                 conn.execute("SELECT pg_advisory_unlock(%s)", (_MIGRATION_LOCK_KEY,))
-        return checkpointer
+        return PostgresSaver(pool)
     except Exception as e:
         raise RuntimeError(
             f"PostgresSaver connection failed. Is Postgres running on {conn_str}? "

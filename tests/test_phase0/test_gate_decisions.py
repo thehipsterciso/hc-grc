@@ -51,9 +51,10 @@ def test_gate_records_decision(gid, node, decision):
 
     rec = graph.get_state(cfg).values["gate_status"][gid]
     assert rec["decision"] == decision
-    # Non-approval must leave a failure_event for the Agent-Evolution monitor.
+    # A rejection (not a deferral or approval) leaves a failure_event for the
+    # Agent-Evolution monitor.
     events = graph.get_state(cfg).values.get("failure_events", [])
-    if decision != "approved":
+    if decision == "rejected":
         assert any(e.get("gate_id") == gid for e in events)
 
 
@@ -63,7 +64,10 @@ def test_gate_2_records_decision(decision):
     graph = _single_gate_graph(gate_2_node, cp)
     cfg = {"configurable": {"thread_id": f"gate_2-{decision}"}}
     state = initial_state(run_id=f"gate_2-{decision}")
-    state["data_split_verified"] = True  # clear the hard prerequisite
+    # Clear ALL Gate-2 hard prerequisites so the interrupt actually fires.
+    state["data_split_verified"] = True
+    state["exploratory_complete"] = True
+    state["hypothesis_set"] = [{"id": "H1.1"}]
     graph.invoke(state, config=cfg)
     graph.invoke(Command(resume={"decision": decision, "rationale": "r"}), config=cfg)
     assert graph.get_state(cfg).values["gate_status"]["gate_2"]["decision"] == decision
