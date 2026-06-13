@@ -21,7 +21,8 @@ Passes are never edited after they are written. New passes are appended.
 |------|------------|-----------|-------|--------|
 | 1 | 2026-06-13 | 39 (7H/19M/13L) | 39 | ✅ complete |
 | 2 | 2026-06-13 | 33 (1C/4H/16M/12L) | 33 | ✅ complete |
-| 3 | 2026-06-13 | _pending workflow_ | — | re-audit running |
+| 3 | 2026-06-13 | 37 (5H/20M/12L) | 37 | ✅ complete |
+| 4 | 2026-06-13 | _pending workflow_ | — | re-audit running |
 
 ---
 
@@ -112,4 +113,32 @@ Gate-2 reject→re-review governance loop.
 
 ## Pass 3 — 2026-06-13
 
-_Re-audit after pass-2 fixes. Findings recorded when the workflow completes._
+**Re-audit** (run `wf_862f6256-cdf`). 37 confirmed (5 high, 20 medium, 12 low);
+several highs were flaws in pass-1/pass-2 fixes — the gate/interrupt/resume
+subsystem needed a real redesign, not more shallow patches. Tracked as #217–#253.
+
+### Fix batches (all 37 closed)
+- **Batch 9 — highs** (`12d742e`): #219 malformed-response recovery loop, #220
+  gate-id correlation, #221 only-approved-is-terminal (deferred re-triggerable),
+  #218 advisory lock on the migration connection, #217 Gate-2 enforces
+  exploratory_complete + hypothesis_set, #236 prereq-failure defers (no loop), #242
+  deferred ≠ failure_event. Gates refactored onto a shared `_run_gate` runner.
+- **Batch 10 — reasoning/obs/test mediums** (`3c12dd6`): #227 _run_sync timeout,
+  #228 split retry budgets, #230 complete_json reparse retry, #231 JSON not capped,
+  #232 exact model liveness, #233 empty reply retryable, #240 system prompt on span,
+  #241 0.0.0.0 dropped, #237/#35 hypothesis isolation, #234 bench off-LLM, #222/#223
+  golden split + leakage tests.
+- **Batch 11 — trace context + types** (`c6b8de8`): #238 OTel context across the
+  timeout thread, #239 run_id via baggage, #252 bootstrap arg, #246 empty-T3, #229
+  type-name classification, #245/#247 annotations, #249 single atexit, #248 docstring,
+  #253 MLflow DB schemes.
+- **Batch 12 — config + deps** (`21337b5`): #225/#226 live checkpointing config,
+  #235 artifact dedup, #243/#244 dependency bounds, #224 recovery test, #250.
+
+**Pass 3 result: 37/37 fixed, 100 tests passing.** Pass 4 re-audits again.
+
+---
+
+## Pass 4 — 2026-06-13
+
+_Re-audit after pass-3 fixes. Findings recorded when the workflow completes._
