@@ -20,13 +20,40 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+class ConfigError(ValueError):
+    """Raised when configs/platform.yaml is malformed or missing required keys."""
+
+
+# Required structure (dotted paths). Validated at load so a silent typo or a
+# dropped section fails loudly at startup rather than as a confusing KeyError deep
+# in an infrastructure module (#171).
+_REQUIRED_PATHS = (
+    "observability.phoenix.port",
+    "observability.phoenix.project_name",
+    "observability.mlflow.tracking_uri",
+)
+
+
+def _validate_config(cfg: Any, source: str) -> dict[str, Any]:
+    if not isinstance(cfg, dict):
+        raise ConfigError(f"{source}: top-level YAML must be a mapping, got {type(cfg).__name__}.")
+    for path in _REQUIRED_PATHS:
+        node: Any = cfg
+        for key in path.split("."):
+            if not isinstance(node, dict) or key not in node:
+                raise ConfigError(f"{source}: missing required config key '{path}'.")
+            node = node[key]
+    return cfg
+
+
 @functools.lru_cache(maxsize=1)
 def load_platform_config() -> dict[str, Any]:
     """
-    Load and cache configs/platform.yaml.
+    Load, validate, and cache configs/platform.yaml.
 
     Cached for the process lifetime — platform-scope config is stable within a
     run. Call load_platform_config.cache_clear() in tests that mutate the file.
+    Raises ConfigError if required sections are missing.
     """
     config_path = repo_root() / "configs" / "platform.yaml"
     if not config_path.exists():
@@ -35,4 +62,5 @@ def load_platform_config() -> dict[str, Any]:
             "Infrastructure modules require configs/platform.yaml."
         )
     with config_path.open("r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
+        cfg = yaml.safe_load(fh)
+    return _validate_config(cfg, str(config_path))

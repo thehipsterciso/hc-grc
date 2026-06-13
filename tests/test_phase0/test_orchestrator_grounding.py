@@ -14,10 +14,7 @@ Two paths are covered:
 
 from __future__ import annotations
 
-import pytest
-
 from src.nodes.orchestrator import _ORCHESTRATOR_TIER, t00_orchestrator_node
-from src.reasoning_client import is_available
 from src.state import initial_state
 
 
@@ -52,16 +49,27 @@ def test_grounding_records_phase(monkeypatch):
     assert prov["run_id"] == "grounding-phase-001"
 
 
-def test_grounding_live_when_backend_available(monkeypatch):
-    """When a real Tier 2 backend is reachable, the node produces grounding text."""
+def test_grounding_records_text_when_backend_returns(monkeypatch):
+    """When the reasoning backend returns text, the node captures it as grounding.
+
+    Deterministic and CI-runnable: the reasoning_client is stubbed (no live model,
+    no double-invocation), so this exercises the node's capture/record logic on the
+    success path every run, not just when Ollama happens to be up (#153)."""
     monkeypatch.delenv("HCGRC_DISABLE_REASONING", raising=False)
-    if not is_available(_ORCHESTRATOR_TIER):
-        pytest.skip("Tier 2 reasoning backend not reachable in this environment")
+    captured = {}
 
-    state = initial_state(run_id="grounding-live-001")
-    update = t00_orchestrator_node(state)
+    def fake_complete(tier, prompt, **kwargs):
+        captured["tier"] = tier
+        captured["kwargs"] = kwargs
+        return "GROUNDING: objective, next step, Gate 1, preconditions."
 
-    assert isinstance(update["run_grounding"], str)
-    assert update["run_grounding"].strip()
-    prov = _t00_prov(update)
-    assert prov["grounded"] is True
+    monkeypatch.setattr("src.nodes.orchestrator.complete", fake_complete)
+
+    update = t00_orchestrator_node(initial_state(run_id="grounding-live-001"))
+
+    assert update["run_grounding"] == "GROUNDING: objective, next step, Gate 1, preconditions."
+    assert _t00_prov(update)["grounded"] is True
+    # run context is threaded through for trace correlation.
+    assert captured["tier"] == _ORCHESTRATOR_TIER
+    assert captured["kwargs"].get("run_id") == "grounding-live-001"
+    assert captured["kwargs"].get("agent_id") == "orchestrator"
