@@ -33,6 +33,8 @@ _REQUIRED_PATHS = (
     "observability.mlflow.tracking_uri",
     "vector_store.host",       # dereferenced by qdrant_setup (#207)
     "vector_store.http_port",
+    "checkpointing.backend",   # drives PostgresSaver selection (#271)
+    "checkpointing.database",
 )
 
 

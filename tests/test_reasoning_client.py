@@ -145,6 +145,19 @@ def test_complete_json_parses_stubbed_reply(monkeypatch):
     assert rc.complete_json(Tier.T2, "classify") == {"relation": "subset"}
 
 
+def test_t2_classifies_missing_model_as_permanent(monkeypatch):
+    # pass-4 #257: a missing Ollama model is a PermanentReasoningError (not retried).
+    monkeypatch.delenv("HCGRC_DISABLE_REASONING", raising=False)
+
+    class _Boom:
+        def invoke(self, *a, **k):
+            raise RuntimeError('model "llama3.1:8b" not found, try pulling it first')
+
+    monkeypatch.setattr(rc, "_ollama", lambda *a, **k: _Boom())
+    with pytest.raises(rc.PermanentReasoningError):
+        rc._t2_complete("p", None, 0.0, "llama3.1:8b", False)
+
+
 def test_with_timeout_raises_on_overrun():
     import time
     with pytest.raises(ReasoningError, match="timed out"):

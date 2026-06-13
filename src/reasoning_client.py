@@ -204,16 +204,18 @@ def _t2_complete(prompt: str, system: str | None, temperature: float, model: str
     def _call():
         resp = llm.invoke(messages)
         content = getattr(resp, "content", resp)
-        return content if isinstance(content, str) else str(content)
+        text = content if isinstance(content, str) else str(content)
+        return text, getattr(resp, "usage_metadata", None)  # token counts (#279)
 
     try:
-        text = _with_timeout(_call, T2_TIMEOUT, f"Tier 2 (Ollama @ {T2_BASE_URL})").strip()
+        text, usage = _with_timeout(_call, T2_TIMEOUT, f"Tier 2 (Ollama @ {T2_BASE_URL})")
+        text = text.strip()
         if not text:
             # An empty/whitespace reply is not a valid result — surface it as a
             # retryable error rather than silently returning "" and corrupting a
             # JSON caller or recording an empty high-stakes answer (#233).
             raise ReasoningError(f"Tier 2 (Ollama @ {T2_BASE_URL}) returned an empty reply")
-        return text, {"model": model}
+        return text, {"model": model, "usage": usage}
     except ReasoningError:
         raise
     except Exception as exc:
@@ -274,6 +276,12 @@ async def _t3_async(prompt: str, system: str | None, max_turns: int,
     async def _drain():
         nonlocal result_error
         async for msg in query(prompt=prompt, options=opts):
+            # The SDK may emit a first-class RateLimitEvent (status='rejected')
+            # ahead of / instead of a ResultMessage error — treat it as a rate
+            # window so the long backpressure path runs, not fast retry (#266).
+            if type(msg).__name__ == "RateLimitEvent" or getattr(msg, "status", None) == "rejected":
+                result_error = {"status": 429, "errors": ["RateLimitEvent"], "stop_reason": "rate_limit"}
+                continue
             if isinstance(msg, AssistantMessage):
                 if getattr(msg, "model", None):
                     meta["model"] = msg.model  # the actual model the run used (#204)
@@ -455,9 +463,10 @@ def complete(
                 last_exc = exc
                 if rate_attempts >= RATE_LIMIT_MAX_RETRIES:
                     break
+                sleep_s = RATE_LIMIT_BACKOFF * (rate_attempts + 1)
                 span.add_event("rate_limit_backpressure",
-                               {"attempt": rate_attempts, "sleep_s": RATE_LIMIT_BACKOFF})
-                time.sleep(RATE_LIMIT_BACKOFF * (rate_attempts + 1))
+                               {"attempt": rate_attempts, "sleep_s": sleep_s})  # actual wait (#273)
+                time.sleep(sleep_s)
                 rate_attempts += 1
             except ReasoningError as exc:
                 last_exc = exc
@@ -497,17 +506,29 @@ def complete_json(
         "no markdown fences, no commentary."
     )
     last_exc: ReasoningError | None = None
-    for attempt in range(MAX_RETRIES + 1):
-        raw = complete(
-            tier, prompt, system=json_system, temperature=temperature,
-            max_turns=max_turns, model=model, run_id=run_id, agent_id=agent_id,
-            _json_mode=True,
-        )
-        try:
-            return _extract_json(raw)
-        except ReasoningError as exc:
-            last_exc = exc  # bad/garbled JSON — regenerate and try again
-    raise last_exc
+    # Span the parse-retry loop so bad-JSON regenerations are visible in Phoenix
+    # rather than silent (#269).
+    with _tracer.start_as_current_span("reasoning.complete_json") as span:
+        span.set_attribute("hcgrc.tier", tier.value)
+        if run_id:
+            span.set_attribute("hcgrc.run_id", run_id)
+        for attempt in range(MAX_RETRIES + 1):
+            raw = complete(
+                tier, prompt, system=json_system, temperature=temperature,
+                max_turns=max_turns, model=model, run_id=run_id, agent_id=agent_id,
+                _json_mode=True,
+            )
+            try:
+                result = _extract_json(raw)
+                span.set_attribute("json.parse_attempts", attempt + 1)
+                return result
+            except ReasoningError as exc:
+                last_exc = exc  # bad/garbled JSON — regenerate and try again
+                span.add_event("json_parse_failure",
+                               {"attempt": attempt, "error": str(exc)[:300]})
+        span.record_exception(last_exc)
+        span.set_status(trace.StatusCode.ERROR, str(last_exc))
+        raise last_exc
 
 
 def _extract_json(text: str) -> Any:

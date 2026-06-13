@@ -121,6 +121,13 @@ def bootstrap_observability():
         return None
     if not cfg.get("enabled", True):
         return None
+    # Also point MLflow at the local store so experiment tracking is actually
+    # configured in a run path (cross-store run_id correlation, #282). Best-effort.
+    try:
+        from ..tracking.mlflow_setup import configure_mlflow
+        configure_mlflow()
+    except Exception:
+        pass
     try:
         return instrument_langchain()
     except Exception:

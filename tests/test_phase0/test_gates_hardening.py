@@ -52,6 +52,15 @@ def test_already_decided():
     assert _already_decided(state, "gate_2") is False
 
 
+def test_gate_node_is_noop_when_already_approved():
+    # pass-4 #6: re-entering a gate that already holds a terminal decision must be
+    # a no-op (no re-fired interrupt, no re-run side effects).
+    from src.nodes.gates import gate_1_node
+    state = initial_state(run_id="idem-001")
+    state["gate_status"] = {"gate_1": {"decision": "approved", "rationale": "r"}}
+    assert gate_1_node(state) == {}
+
+
 def test_only_approved_is_terminal():
     # pass-2 #184/#187 + pass-3 #5: rejected re-reviews and deferred is re-triggerable,
     # so only 'approved' is terminal (stops the gate re-firing on re-entry).
