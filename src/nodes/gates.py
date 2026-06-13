@@ -56,6 +56,59 @@ def _rejection_event(gate_id: str, rationale: str, run_id: str) -> dict[str, Any
     }
 
 
+_VALID_DECISIONS = {"approved", "rejected", "deferred"}
+
+
+def _parse_operator_response(resp: Any, gate_id: str) -> tuple[str, str]:
+    """
+    Validate the operator's interrupt() response and return (decision, rationale).
+
+    A malformed response must NOT be silently coerced to 'rejected' (that would
+    let a non-dict or a typo'd decision masquerade as a real governance decision,
+    #163/#180). Fail loud so the operator re-submits a well-formed response on the
+    next resume.
+    """
+    if not isinstance(resp, dict):
+        raise ValueError(
+            f"{gate_id}: operator response must be a dict like "
+            f"{{'decision': 'approved'|'rejected'|'deferred', 'rationale': '...'}}, "
+            f"got {type(resp).__name__}."
+        )
+    decision = resp.get("decision")
+    if decision not in _VALID_DECISIONS:
+        raise ValueError(
+            f"{gate_id}: operator response 'decision' must be one of "
+            f"{sorted(_VALID_DECISIONS)}, got {decision!r}."
+        )
+    rationale = resp.get("rationale") or "No rationale provided."
+    return decision, rationale
+
+
+def _already_decided(state: HCGRCState, gate_id: str) -> bool:
+    """
+    True if this gate already holds a final decision in gate_status.
+
+    Guards against a re-invocation (after the run already completed) re-firing the
+    interrupt and re-running downstream effects on top of a prior decision (#177).
+    Does not affect the normal interrupt/resume flow, where gate_status carries no
+    record for this gate until the node itself writes one.
+    """
+    record = state.get("gate_status", {}).get(gate_id)
+    return bool(record) and record.get("decision") in _VALID_DECISIONS
+
+
+def _finalize_gate(state: HCGRCState, gate_id: str, decision: str,
+                   rationale: str, reviewer: str = "operator") -> dict[str, Any]:
+    """Build the gate node's state update: failure event (if not approved) + the
+    authoritative gate_status record (written only by gate_coordinator_node)."""
+    update: dict[str, Any] = {}
+    if decision != "approved":
+        update["failure_events"] = [_rejection_event(gate_id, rationale, state["run_id"])]
+    from .gate_coordinator import gate_coordinator_node
+    update.update(gate_coordinator_node(state, gate_id, decision, rationale, reviewer=reviewer))
+    return update
+
+
 # ── Gate 1 ────────────────────────────────────────────────────────────────────
 
 
@@ -107,22 +160,10 @@ def gate_1_node(state: HCGRCState) -> dict[str, Any]:
 
     # interrupt() parks the graph and surfaces proposal to operator.
     # The operator's response dict is the return value of interrupt().
-    operator_response: dict[str, Any] = interrupt(proposal)
-
-    decision = operator_response.get("decision", "rejected")
-    rationale = operator_response.get("rationale", "No rationale provided.")
-
-    update: dict[str, Any] = {}
-
-    if decision != "approved":
-        update["failure_events"] = [_rejection_event("gate_1", rationale, state["run_id"])]
-
-    # Gate coordinator writes the final gate_status record.
-    # Import here to avoid circular import at module level.
-    from .gate_coordinator import gate_coordinator_node
-    update.update(gate_coordinator_node(state, "gate_1", decision, rationale))
-
-    return update
+    if _already_decided(state, "gate_1"):
+        return {}
+    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_1")
+    return _finalize_gate(state, "gate_1", decision, rationale)
 
 
 # ── Gate 2 ────────────────────────────────────────────────────────────────────
@@ -148,7 +189,12 @@ def gate_2_node(state: HCGRCState) -> dict[str, Any]:
         hard_failures.append("data_split_verified is False — run compute_data_split() first")
 
     if hard_failures:
-        return {
+        # Write an authoritative gate_status record (decision=rejected, system
+        # reviewer) so the router and operator see the failure, instead of
+        # returning only a failure_event and letting the router silently park the
+        # run as if Gate 2 had never fired (#164/#178).
+        rationale = "Hard prerequisite failure: " + "; ".join(hard_failures)
+        update = {
             "failure_events": [
                 {
                     "event_type": "gate_prerequisite_failure",
@@ -159,6 +205,11 @@ def gate_2_node(state: HCGRCState) -> dict[str, Any]:
                 }
             ]
         }
+        from .gate_coordinator import gate_coordinator_node
+        update.update(
+            gate_coordinator_node(state, "gate_2", "rejected", rationale, reviewer="system")
+        )
+        return update
 
     checklist = [
         "DIVERGENCE-01 operationalization selected and logged to Preregistration Ledger",
@@ -183,20 +234,10 @@ def gate_2_node(state: HCGRCState) -> dict[str, Any]:
         run_id=state["run_id"],
     )
 
-    operator_response: dict[str, Any] = interrupt(proposal)
-
-    decision = operator_response.get("decision", "rejected")
-    rationale = operator_response.get("rationale", "No rationale provided.")
-
-    update: dict[str, Any] = {}
-
-    if decision != "approved":
-        update["failure_events"] = [_rejection_event("gate_2", rationale, state["run_id"])]
-
-    from .gate_coordinator import gate_coordinator_node
-    update.update(gate_coordinator_node(state, "gate_2", decision, rationale))
-
-    return update
+    if _already_decided(state, "gate_2"):
+        return {}
+    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_2")
+    return _finalize_gate(state, "gate_2", decision, rationale)
 
 
 # ── Gate 3 ────────────────────────────────────────────────────────────────────
@@ -266,17 +307,10 @@ def gate_3_node(state: HCGRCState) -> dict[str, Any]:
         run_id=state["run_id"],
     )
 
-    operator_response: dict[str, Any] = interrupt(proposal)
-    decision = operator_response.get("decision", "rejected")
-    rationale = operator_response.get("rationale", "No rationale provided.")
-
-    update: dict[str, Any] = {}
-    if decision != "approved":
-        update["failure_events"] = [_rejection_event("gate_3", rationale, state["run_id"])]
-
-    from .gate_coordinator import gate_coordinator_node
-    update.update(gate_coordinator_node(state, "gate_3", decision, rationale))
-    return update
+    if _already_decided(state, "gate_3"):
+        return {}
+    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_3")
+    return _finalize_gate(state, "gate_3", decision, rationale)
 
 
 # ── Gate 4 ────────────────────────────────────────────────────────────────────
@@ -344,17 +378,10 @@ def gate_4_node(state: HCGRCState) -> dict[str, Any]:
         run_id=state["run_id"],
     )
 
-    operator_response: dict[str, Any] = interrupt(proposal)
-    decision = operator_response.get("decision", "rejected")
-    rationale = operator_response.get("rationale", "No rationale provided.")
-
-    update: dict[str, Any] = {}
-    if decision != "approved":
-        update["failure_events"] = [_rejection_event("gate_4", rationale, state["run_id"])]
-
-    from .gate_coordinator import gate_coordinator_node
-    update.update(gate_coordinator_node(state, "gate_4", decision, rationale))
-    return update
+    if _already_decided(state, "gate_4"):
+        return {}
+    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_4")
+    return _finalize_gate(state, "gate_4", decision, rationale)
 
 
 def gate_5_node(state: HCGRCState) -> dict[str, Any]:
@@ -374,12 +401,7 @@ def gate_5_node(state: HCGRCState) -> dict[str, Any]:
         ],
         run_id=state["run_id"],
     )
-    operator_response: dict[str, Any] = interrupt(proposal)
-    decision = operator_response.get("decision", "rejected")
-    rationale = operator_response.get("rationale", "")
-    update: dict[str, Any] = {}
-    if decision != "approved":
-        update["failure_events"] = [_rejection_event("gate_5", rationale, state["run_id"])]
-    from .gate_coordinator import gate_coordinator_node
-    update.update(gate_coordinator_node(state, "gate_5", decision, rationale))
-    return update
+    if _already_decided(state, "gate_5"):
+        return {}
+    decision, rationale = _parse_operator_response(interrupt(proposal), "gate_5")
+    return _finalize_gate(state, "gate_5", decision, rationale)

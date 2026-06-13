@@ -87,6 +87,32 @@ def _stub_status(agent_id: str, run_id: str) -> dict[str, Any]:
     }
 
 
+def _failed_status(agent_id: str, run_id: str, exc: BaseException) -> dict[str, Any]:
+    """Status record written when an agent raises a real runtime error (not a stub).
+
+    Produces the 'failed' status the state schema documents, so one agent's bug is
+    recorded and isolated instead of crashing the whole subgraph (#148)."""
+    return {
+        "agent_id": agent_id,
+        "status": "failed",
+        "error": repr(exc),
+        "note": f"{agent_id} raised {type(exc).__name__} during execution",
+        "timestamp_utc": _utc_now(),
+        "run_id": run_id,
+    }
+
+
+def _failure_event(agent_id: str, run_id: str, exc: BaseException) -> dict[str, Any]:
+    """Failure event for Agent-Evolution / operator monitoring (append reducer)."""
+    return {
+        "event_type": "agent_runtime_error",
+        "agent_id": agent_id,
+        "error": repr(exc),
+        "run_id": run_id,
+        "timestamp_utc": _utc_now(),
+    }
+
+
 def _prov(activity: str, run_id: str, **kwargs: Any) -> dict[str, Any]:
     """Minimal PROV-DM compatible activity record."""
     return {
@@ -113,6 +139,7 @@ def data_pipeline_node(state: HCGRCState) -> dict[str, Any]:
     """
     run_id = state["run_id"]
     pipeline_statuses: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
     prov: list[dict[str, Any]] = []
 
     stages = [
@@ -149,14 +176,29 @@ def data_pipeline_node(state: HCGRCState) -> dict[str, Any]:
                 note="NotImplementedError — Phase 1 implementation pending",
             ))
             break
+        except Exception as exc:
+            # A real runtime error in one stage is recorded as 'failed' and halts
+            # the pipeline (later stages depend on earlier ones) without crashing
+            # the graph or discarding prior stages' output (#148). A governance
+            # violation must propagate — it is not a recoverable pipeline fault.
+            from ..agents.base import SAPViolationError
+            pipeline_statuses.append(_failed_status(agent_id, run_id, exc))
+            failures.append(_failure_event(agent_id, run_id, exc))
+            prov.append(_prov(
+                f"data_pipeline_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
+            ))
+            if isinstance(exc, SAPViolationError):
+                raise
+            break
 
-    # phase_1_ready only if all four stages completed (no stubs in statuses)
+    # phase_1_ready only if all four stages completed (no stubs/failures in statuses)
     all_complete = all(s["status"] == "completed" for s in pipeline_statuses)
 
     return {
         **accumulated_update,
         "phase_1_ready": all_complete,
         "eda_agent_statuses": pipeline_statuses,
+        "failure_events": failures,
         "prov_activities": prov + [_prov("data_pipeline_node", run_id,
                                          all_complete=all_complete)],
     }
@@ -183,6 +225,7 @@ def exploratory_phase_node(state: HCGRCState) -> dict[str, Any]:
     run_id = state["run_id"]
     agent_statuses: list[dict[str, Any]] = []
     all_eda_artifacts: list[str] = []
+    failures: list[dict[str, Any]] = []
     prov: list[dict[str, Any]] = []
 
     research_agents = [
@@ -215,6 +258,19 @@ def exploratory_phase_node(state: HCGRCState) -> dict[str, Any]:
                 run_id,
                 note="NotImplementedError — Phase 1 implementation pending",
             ))
+        except Exception as exc:
+            # P1-P5 are independent — one agent's runtime error is recorded as
+            # 'failed' and the loop continues so the other agents' artifacts are
+            # preserved, instead of crashing the whole exploratory subgraph (#148).
+            # A governance violation must propagate, not be swallowed.
+            from ..agents.base import SAPViolationError
+            if isinstance(exc, SAPViolationError):
+                raise
+            agent_statuses.append(_failed_status(agent_id, run_id, exc))
+            failures.append(_failure_event(agent_id, run_id, exc))
+            prov.append(_prov(
+                f"exploratory_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
+            ))
 
     all_stubs = all(s["status"] == "stub_pending" for s in agent_statuses)
     any_complete = any(s["status"] == "completed" for s in agent_statuses)
@@ -226,6 +282,7 @@ def exploratory_phase_node(state: HCGRCState) -> dict[str, Any]:
         "phase": "phase_1",
         "eda_artifacts": all_eda_artifacts,
         "eda_agent_statuses": agent_statuses,
+        "failure_events": failures,
         "exploratory_complete": exploratory_complete,
         "prov_activities": prov + [_prov("exploratory_phase_node", run_id,
                                           exploratory_complete=exploratory_complete)],

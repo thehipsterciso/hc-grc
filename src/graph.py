@@ -37,6 +37,7 @@ from __future__ import annotations
 from typing import Any
 
 from langgraph.graph import END, StateGraph
+from langgraph.types import Command, RetryPolicy
 
 from .infrastructure.observability.phoenix_setup import (
     bootstrap_observability,
@@ -52,6 +53,10 @@ from .nodes.phase1 import (
     hypothesis_formalize_node,
 )
 from .state import HCGRCState, initial_state
+
+# Upper bound on graph super-steps per run. Bounds the Gate-2-rejected loop back
+# to exploratory analysis so a non-converging run fails loudly (#179).
+GRAPH_RECURSION_LIMIT = 50
 
 # ── Graph builder ─────────────────────────────────────────────────────────────
 
@@ -69,8 +74,14 @@ def build_graph(checkpointer=None) -> StateGraph:
     """
     builder = StateGraph(HCGRCState)
 
+    # Retry transient node failures (network blips, checkpoint write hiccups,
+    # backend stalls) with backoff — ADR-0011 resilience (#165). Applied to the
+    # agent-bearing nodes; gate nodes are excluded because they use interrupt()
+    # and must not be re-executed on retry.
+    agent_retry = RetryPolicy(max_attempts=3, initial_interval=0.5, backoff_factor=2.0)
+
     # ── Phase 0 nodes ─────────────────────────────────────────────────────────
-    builder.add_node("orchestrator", t00_orchestrator_node)
+    builder.add_node("orchestrator", t00_orchestrator_node, retry=agent_retry)
 
     # data_split_node needs synthetic_control_ids in Phase 0.
     # In Phase 1, DataStewardAgent writes real splits to disk.
@@ -83,9 +94,9 @@ def build_graph(checkpointer=None) -> StateGraph:
     builder.add_node("gate_1", gate_1_node)
 
     # ── Phase 1 nodes ─────────────────────────────────────────────────────────
-    builder.add_node("data_pipeline", data_pipeline_node)
-    builder.add_node("exploratory_phase", exploratory_phase_node)
-    builder.add_node("hypothesis_formalize", hypothesis_formalize_node)
+    builder.add_node("data_pipeline", data_pipeline_node, retry=agent_retry)
+    builder.add_node("exploratory_phase", exploratory_phase_node, retry=agent_retry)
+    builder.add_node("hypothesis_formalize", hypothesis_formalize_node, retry=agent_retry)
     builder.add_node("gate_2", gate_2_node)
 
     # ── Phase 2 stubs (nodes registered; edges from confirmatory subgraph deferred) ──
@@ -157,10 +168,44 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
     bootstrap_observability(state["run_id"])
-    thread_config = {"configurable": {"thread_id": state["run_id"]}}
+    # Explicit recursion_limit bounds the Gate-2-rejected → exploratory loop so a
+    # run that never converges terminates with GraphRecursionError instead of
+    # looping unbounded (#179).
+    thread_config = {
+        "configurable": {"thread_id": state["run_id"]},
+        "recursion_limit": GRAPH_RECURSION_LIMIT,
+    }
     with run_trace_context(state["run_id"]):
         result = graph.invoke(state, config=thread_config)
     return result
+
+
+def resume_run(run_id: str, decision: str, rationale: str, checkpointer,
+               *, checkpoint_id: str | None = None) -> dict[str, Any]:
+    """
+    Resume a run parked at a gate interrupt with the operator's decision.
+
+    The runners invoke the graph once and return when a gate's interrupt() parks
+    it; this is the other half of the loop (#162). The operator's decision is
+    delivered via the ADR-0014 governance channel and injected here as the
+    interrupt's resume value, so the gate node observes
+    {'decision': ..., 'rationale': ...} and the graph continues from the
+    checkpoint.
+
+    Requires the SAME checkpointer the run was started with (thread_id == run_id),
+    so the parked state can be loaded.
+    """
+    graph = build_graph(checkpointer=checkpointer)
+    bootstrap_observability(run_id)
+    config: dict[str, Any] = {
+        "configurable": {"thread_id": run_id},
+        "recursion_limit": GRAPH_RECURSION_LIMIT,
+    }
+    if checkpoint_id:
+        config["configurable"]["checkpoint_id"] = checkpoint_id
+    resume_value = {"decision": decision, "rationale": rationale}
+    with run_trace_context(run_id):
+        return graph.invoke(Command(resume=resume_value), config=config)
 
 
 def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str, Any]:
@@ -174,7 +219,13 @@ def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
     bootstrap_observability(state["run_id"])
-    thread_config = {"configurable": {"thread_id": state["run_id"]}}
+    # Explicit recursion_limit bounds the Gate-2-rejected → exploratory loop so a
+    # run that never converges terminates with GraphRecursionError instead of
+    # looping unbounded (#179).
+    thread_config = {
+        "configurable": {"thread_id": state["run_id"]},
+        "recursion_limit": GRAPH_RECURSION_LIMIT,
+    }
     with run_trace_context(state["run_id"]):
         result = graph.invoke(state, config=thread_config)
     return result
