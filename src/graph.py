@@ -21,9 +21,9 @@ Graph topology (Phase 0 + Phase 1):
       ↓ [rejected]
   exploratory_phase   ← loop back to re-run EDA with revised hypotheses
 
-  gate_3, gate_4, gate_5 are Phase 2 mechanism work — nodes registered here
-  so routing functions can reference them, but edges from confirmatory subgraph
-  are deferred.
+  gate_3, gate_4, gate_5 are Phase 2 mechanism work — their node functions live
+  in nodes/gates.py but are NOT registered in this Phase 0/1 graph (they would be
+  unreachable). They are wired into the confirmatory subgraph in Phase 2.
 
 Gate nodes use interrupt() to surface proposals to the operator.
 All gate decisions are written by gate_coordinator (serialized, no concurrent writes).
@@ -39,12 +39,13 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command, RetryPolicy
 
+from .checkpointer import get_checkpointer
 from .infrastructure.observability.phoenix_setup import (
     bootstrap_observability,
     run_trace_context,
 )
 from .nodes.data_split import data_split_node
-from .nodes.gates import gate_1_node, gate_2_node, gate_3_node, gate_4_node, gate_5_node
+from .nodes.gates import gate_1_node, gate_2_node
 from .nodes.orchestrator import route_after_gate_1, route_after_gate_2, t00_orchestrator_node
 from .nodes.phase1 import (
     confirmatory_entry_node,
@@ -105,7 +106,7 @@ def build_graph(checkpointer=None) -> StateGraph:
     )
 
     # ── Phase 0 nodes ─────────────────────────────────────────────────────────
-    builder.add_node("orchestrator", t00_orchestrator_node, retry=agent_retry)
+    builder.add_node("orchestrator", t00_orchestrator_node, retry_policy=agent_retry)
 
     # data_split_node needs synthetic_control_ids in Phase 0.
     # In Phase 1, DataStewardAgent writes real splits to disk.
@@ -118,16 +119,16 @@ def build_graph(checkpointer=None) -> StateGraph:
     builder.add_node("gate_1", gate_1_node)
 
     # ── Phase 1 nodes ─────────────────────────────────────────────────────────
-    builder.add_node("data_pipeline", data_pipeline_node, retry=agent_retry)
-    builder.add_node("exploratory_phase", exploratory_phase_node, retry=agent_retry)
-    builder.add_node("hypothesis_formalize", hypothesis_formalize_node, retry=agent_retry)
+    builder.add_node("data_pipeline", data_pipeline_node, retry_policy=agent_retry)
+    builder.add_node("exploratory_phase", exploratory_phase_node, retry_policy=agent_retry)
+    builder.add_node("hypothesis_formalize", hypothesis_formalize_node, retry_policy=agent_retry)
     builder.add_node("gate_2", gate_2_node)
 
-    # ── Phase 2 stubs (nodes registered; edges from confirmatory subgraph deferred) ──
+    # ── Phase 2 stub ────────────────────────────────────────────────────────────
+    # gate_3/4/5 are NOT registered here: they have no inbound edges in Phase 0/1
+    # and would be dead/unreachable nodes (#213). They are wired into the
+    # confirmatory subgraph in Phase 2. Their node functions live in nodes/gates.py.
     builder.add_node("confirmatory_entry", confirmatory_entry_node)
-    builder.add_node("gate_3", gate_3_node)
-    builder.add_node("gate_4", gate_4_node)
-    builder.add_node("gate_5", gate_5_node)
 
     # ── Edges — Phase 0 ───────────────────────────────────────────────────────
     builder.set_entry_point("orchestrator")
@@ -158,16 +159,10 @@ def build_graph(checkpointer=None) -> StateGraph:
         },
     )
 
-    # ── Phase 2 stub edges ────────────────────────────────────────────────────
+    # ── Phase 2 stub edge ──────────────────────────────────────────────────────
     # confirmatory_entry → gate_3 → gate_4 → gate_5 will be wired in Phase 2.
     # For now, confirmatory_entry routes to END so the graph compiles.
     builder.add_edge("confirmatory_entry", END)
-
-    # gate_3, gate_4, gate_5 are reachable (registered) but not yet wired
-    # into the confirmatory subgraph. They connect to END to keep graph valid.
-    builder.add_edge("gate_3", END)
-    builder.add_edge("gate_4", END)
-    builder.add_edge("gate_5", END)
 
     # ── Compile ───────────────────────────────────────────────────────────────
     compile_kwargs: dict[str, Any] = {}
@@ -189,6 +184,10 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
     For tests that need to skip the interrupt, use the graph's
     .invoke() with a pre-configured Command resume.
     """
+    # interrupt() is a no-op without a checkpointer — the gate could not pause for
+    # the operator. Default to an in-memory checkpointer so the runner actually
+    # parks at Gate 1 (#200); production passes a PostgresSaver.
+    checkpointer = checkpointer or get_checkpointer(use_memory=True)
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
     bootstrap_observability(state["run_id"])
@@ -240,6 +239,7 @@ def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str
     nodes will record stub_pending statuses (NotImplementedError caught). This
     verifies the Phase 1 graph topology before real SCF data is loaded.
     """
+    checkpointer = checkpointer or get_checkpointer(use_memory=True)
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
     bootstrap_observability(state["run_id"])

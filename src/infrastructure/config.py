@@ -31,6 +31,8 @@ _REQUIRED_PATHS = (
     "observability.phoenix.port",
     "observability.phoenix.project_name",
     "observability.mlflow.tracking_uri",
+    "vector_store.host",       # dereferenced by qdrant_setup (#207)
+    "vector_store.http_port",
 )
 
 

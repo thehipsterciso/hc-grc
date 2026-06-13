@@ -43,3 +43,9 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=term-missing"
+# Promote LangGraph deprecations to errors so a deprecated API (e.g. add_node
+# retry= vs retry_policy=) fails the suite instead of silently shipping until the
+# next major breaks it (#206).
+filterwarnings = [
+    "error::langgraph.warnings.LangGraphDeprecationWarning",
+]

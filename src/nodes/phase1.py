@@ -166,7 +166,16 @@ def data_pipeline_node(state: HCGRCState) -> dict[str, Any]:
                     prov.extend(v)
                 else:
                     accumulated_update[k] = v
-        except NotImplementedError:
+        except NotImplementedError as exc:
+            # Only an unimplemented agent legitimately raises NotImplementedError.
+            # Once IMPLEMENTED, a NotImplementedError is a real bug, not a stub (#202).
+            if getattr(agent, "IMPLEMENTED", False):
+                pipeline_statuses.append(_failed_status(agent_id, run_id, exc))
+                failures.append(_failure_event(agent_id, run_id, exc))
+                prov.append(_prov(
+                    f"data_pipeline_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
+                ))
+                break
             pipeline_statuses.append(_stub_status(agent_id, run_id))
             # Cannot continue pipeline if a stage is not implemented
             # Phase 1 is not ready until all four stages complete
@@ -251,7 +260,15 @@ def exploratory_phase_node(state: HCGRCState) -> dict[str, Any]:
             })
             prov.append(_prov(f"exploratory_{agent_id.replace('-', '_')}", run_id,
                                artifact_count=len(artifacts)))
-        except NotImplementedError:
+        except NotImplementedError as exc:
+            if getattr(agent, "IMPLEMENTED", False):
+                # Real bug from an implemented agent — record as failed, not stub (#202).
+                agent_statuses.append(_failed_status(agent_id, run_id, exc))
+                failures.append(_failure_event(agent_id, run_id, exc))
+                prov.append(_prov(
+                    f"exploratory_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
+                ))
+                continue
             agent_statuses.append(_stub_status(agent_id, run_id))
             prov.append(_prov(
                 f"exploratory_{agent_id.replace('-', '_')}_stub",

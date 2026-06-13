@@ -131,6 +131,11 @@ class BaseResearchAgent(ABC):
 
     PROTECTED: bool = False  # override in P1–P5, statistical-analyst, hypothesis-formalizer
     AGENT_ID: str = ""       # kebab-case, matches AGENT.md name field
+    # Set True once the agent's run_* methods are real. While False, a
+    # NotImplementedError is an expected Phase-0/1 stub; once True, a
+    # NotImplementedError is a genuine bug the orchestrator must not silently
+    # swallow as 'stub_pending' (#202).
+    IMPLEMENTED: bool = False
 
     def __call__(self, state: HCGRCState) -> dict[str, Any]:
         """
@@ -200,6 +205,7 @@ class BasePipelineAgent(ABC):
 
     AGENT_ID: str = ""     # kebab-case, matches AGENT.md name field
     PROTECTED: bool = False  # never True for pipeline agents
+    IMPLEMENTED: bool = False  # see BaseResearchAgent.IMPLEMENTED (#202)
 
     @abstractmethod
     def run(self, state: HCGRCState) -> dict[str, Any]:

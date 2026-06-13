@@ -341,6 +341,10 @@ def complete(
     # subscription default, the real model is read back from the response.
     known_model = model or (T2_MODEL if tier is Tier.T2 else T3_MODEL)
     with _tracer.start_as_current_span("reasoning.complete") as span:
+        # For T2, LangChainInstrumentor emits a child ChatOllama span under this
+        # one — intentional parent/child nesting (the seam-level call + the
+        # provider call), not redundant double-tracing (#214). T3 has no LangChain
+        # span, so this is the only record of the frontier call.
         # OpenInference LLM conventions + HC-GRC cross-store correlation.
         span.set_attribute("openinference.span.kind", "LLM")
         span.set_attribute("llm.provider", "ollama" if tier is Tier.T2 else "anthropic")

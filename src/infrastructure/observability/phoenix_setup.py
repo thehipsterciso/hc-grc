@@ -27,10 +27,15 @@ cross-referencing MLflow / PostgresSaver / PROV-DM.
 
 from __future__ import annotations
 
+import atexit
 import os
 from contextlib import contextmanager
 
 from ..config import load_platform_config
+
+# ADR-0002: traces carry SCF-derived content and must never leave the machine.
+# The OTLP endpoint is required to be loopback.
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
 
 # Cached registered provider — registration is idempotent within a process
 # (repeat bootstrap calls return the same provider instead of double-registering
@@ -77,6 +82,13 @@ def instrument_langchain(project_name: str | None = None):
     from phoenix.otel import register
 
     cfg = _phoenix_cfg()
+    host = str(cfg.get("host", "localhost"))
+    if host not in _LOOPBACK_HOSTS:
+        # ADR-0002 data sovereignty: refuse to export SCF-derived traces off-box.
+        raise ValueError(
+            f"Phoenix host {host!r} is not loopback. Traces contain SCF-derived "
+            "content and must stay on the compute node (ADR-0002). Use localhost."
+        )
     provider = register(
         project_name=project_name or cfg.get("project_name", "hc-grc"),
         endpoint=phoenix_endpoint(),
@@ -84,6 +96,10 @@ def instrument_langchain(project_name: str | None = None):
         set_global_tracer_provider=True,   # so reasoning_client spans export too
     )
     LangChainInstrumentor().instrument(tracer_provider=provider, skip_dep_check=True)
+    # Flush buffered spans at process exit so the BatchSpanProcessor does not drop
+    # the tail of a run on shutdown/interruption (#215).
+    if hasattr(provider, "force_flush"):
+        atexit.register(provider.force_flush)
     _PROVIDER = provider
     return provider
 

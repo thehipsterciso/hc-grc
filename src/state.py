@@ -69,7 +69,10 @@ class HCGRCState(TypedDict):
     findings: Annotated[list[dict[str, Any]], lambda a, b: a + b]
 
     # ── Data split record ─────────────────────────────────────────────────────
-    # Set by DataSplitAgent; immutable after Gate 1.
+    # Un-reduced (last-write-wins) scalars. Written by exactly one node per phase —
+    # data_split_node in Phase 0, DataStewardAgent in Phase 1 — never concurrently,
+    # so last-write-wins is safe by sequencing, not by a reducer (#212). Immutable
+    # after Gate 1. If these ever become concurrently written, add a reducer.
     data_split_manifest_hash: str | None  # SHA-256 of the raw manifest file
     data_split_seed: int | None  # derived from manifest hash (int.from_bytes)
     data_split_verified: bool  # True after idempotency assertion passes
