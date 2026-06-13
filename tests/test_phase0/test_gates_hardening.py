@@ -63,18 +63,21 @@ def test_only_approved_is_terminal():
     assert _already_decided(state, "gate_2") is True
 
 
-def test_retry_predicate_excludes_governance_and_logic_errors():
-    # pass-2 #186/#188 regression guard: SAP and deterministic logic errors must
-    # never be retried by node RetryPolicy.
-    from src.agents.base import SAPViolationError
-    from src.graph import _is_transient_node_error
+def test_gate_id_correlation_rejects_mismatched_decision():
+    # pass-4 #3/#5: a resume decision targeted at a different gate must NOT finalize
+    # the parked gate — it re-prompts. resume_run now carries gate_id end to end.
+    cp = MemorySaver()
+    graph = build_graph(checkpointer=cp)
+    cfg = {"configurable": {"thread_id": "corr-001"}}
+    graph.invoke(initial_state(run_id="corr-001"), config=cfg)  # parks at gate_1
 
-    assert _is_transient_node_error(SAPViolationError("x")) is False
-    assert _is_transient_node_error(NotImplementedError()) is False
-    assert _is_transient_node_error(ValueError()) is False
-    # genuine transient infra faults remain retryable
-    assert _is_transient_node_error(ConnectionError()) is True
-    assert _is_transient_node_error(TimeoutError()) is True
+    # Decision aimed at gate_2 while gate_1 is parked → ignored, gate_1 undecided.
+    resume_run("corr-001", "approved", "x", cp, gate_id="gate_2")
+    assert "gate_1" not in build_graph(checkpointer=cp).get_state(cfg).values.get("gate_status", {})
+
+    # Correctly targeted decision finalizes.
+    resume_run("corr-001", "approved", "ok", cp, gate_id="gate_1")
+    assert build_graph(checkpointer=cp).get_state(cfg).values["gate_status"]["gate_1"]["decision"] == "approved"
 
 
 # ── Gate 2 prerequisite failure writes a visible decision (#164 / #178) ────────

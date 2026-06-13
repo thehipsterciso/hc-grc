@@ -23,6 +23,27 @@ GateID = Literal["gate_1", "gate_2", "gate_3", "gate_4", "gate_5"]
 GateDecision = Literal["pending", "approved", "rejected", "deferred"]
 
 
+# ── Reducers ──────────────────────────────────────────────────────────────────
+
+
+def _merge_hypotheses(a: list[dict[str, Any]], b: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Append b onto a, deduping by hypothesis 'id' (latest wins, position kept).
+
+    Entries without an 'id' are kept as-is. Prevents a Gate-2 reject → re-formalize
+    loop from accumulating duplicate hypotheses into the pre-registered set."""
+    merged = list(a)
+    index = {h["id"]: i for i, h in enumerate(merged) if isinstance(h, dict) and h.get("id")}
+    for h in b:
+        hid = h.get("id") if isinstance(h, dict) else None
+        if hid is not None and hid in index:
+            merged[index[hid]] = h
+        else:
+            if hid is not None:
+                index[hid] = len(merged)
+            merged.append(h)
+    return merged
+
+
 # ── Core state ───────────────────────────────────────────────────────────────
 
 
@@ -99,10 +120,12 @@ class HCGRCState(TypedDict):
     eda_artifacts: Annotated[list[str], lambda a, b: a + [x for x in b if x not in a]]
     eda_agent_statuses: Annotated[list[dict[str, Any]], lambda a, b: a + b]
 
-    # ── Formalized hypothesis set (append-only) ───────────────────────────────
+    # ── Formalized hypothesis set (append, deduped by id) ─────────────────────
     # Written by HypothesisFormalizerAgent before Gate 2.
     # Each entry is a FormalHypothesis dict (see src/agents/hypothesis_formalizer).
-    hypothesis_set: Annotated[list[dict[str, Any]], lambda a, b: a + b]
+    # Deduped by hypothesis id (latest wins) so a Gate-2 reject → re-formalize loop
+    # cannot accumulate duplicate hypotheses into the set Gate 2 locks (pass-4 #2).
+    hypothesis_set: Annotated[list[dict[str, Any]], lambda a, b: _merge_hypotheses(a, b)]
 
     # ── Orchestrator run-start grounding ──────────────────────────────────────
     # Produced by t00_orchestrator_node via the reasoning_client (Tier 2). The

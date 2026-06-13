@@ -261,14 +261,18 @@ async def _t3_async(prompt: str, system: str | None, max_turns: int,
         system_prompt=system,
         allowed_tools=[],          # pure reasoning — no filesystem/command access
         env=_scrubbed_env(),       # ADR-0016: no metered API key (#146)
+        setting_sources=[],        # don't load ANY on-disk settings into the
+                                   # subprocess — keep the sandbox closed (#12)
     )
     if model:
         opts.model = model
 
     chunks: list[str] = []
     meta: dict[str, Any] = {"model": model}  # real model id if pinned, else unknown
+    result_error: dict[str, Any] | None = None
 
     async def _drain():
+        nonlocal result_error
         async for msg in query(prompt=prompt, options=opts):
             if isinstance(msg, AssistantMessage):
                 if getattr(msg, "model", None):
@@ -281,8 +285,28 @@ async def _t3_async(prompt: str, system: str | None, max_turns: int,
                     meta["usage"] = msg.usage  # token usage for the span (#203)
                 if getattr(msg, "total_cost_usd", None) is not None:
                     meta["cost_usd"] = msg.total_cost_usd
+                # The CLI reports API failures (incl. rate windows) by COMPLETING
+                # the stream with is_error=True / api_error_status set, NOT by
+                # raising. Capture it so a failed run is not returned as success
+                # (pass-4 #1).
+                if getattr(msg, "is_error", False):
+                    result_error = {
+                        "status": getattr(msg, "api_error_status", None),
+                        "errors": getattr(msg, "errors", None),
+                        "stop_reason": getattr(msg, "stop_reason", None),
+                    }
 
     await asyncio.wait_for(_drain(), timeout=T3_TIMEOUT)
+
+    if result_error is not None:
+        status = result_error.get("status")
+        detail = result_error.get("errors") or result_error.get("stop_reason") or status
+        if status in (429, 529):
+            raise RateLimitError(f"Tier 3 rate window (api_error_status={status}): {detail}")
+        if status in (401, 403):
+            raise PermanentReasoningError(f"Tier 3 auth failure ({status}): {detail}")
+        raise ReasoningError(f"Tier 3 run reported an error (status={status}): {detail}")
+
     return "".join(chunks).strip(), meta
 
 

@@ -37,7 +37,7 @@ from __future__ import annotations
 from typing import Any
 
 from langgraph.graph import END, StateGraph
-from langgraph.types import Command, RetryPolicy
+from langgraph.types import Command
 
 from .checkpointer import configured_checkpointer
 from .infrastructure.observability.phoenix_setup import (
@@ -59,23 +59,13 @@ from .state import HCGRCState, initial_state
 # to exploratory analysis so a non-converging run fails loudly (#179).
 GRAPH_RECURSION_LIMIT = 50
 
-# Exceptions that must NOT be retried by node RetryPolicy: governance violations
-# and deterministic logic errors. Anything else (transient infra) is retryable.
-_NON_RETRYABLE = (
-    NotImplementedError,
-    ValueError,
-    KeyError,
-    TypeError,
-    AssertionError,
-)
-
-
-def _is_transient_node_error(exc: BaseException) -> bool:
-    """RetryPolicy predicate: retry transient faults, never governance/logic errors."""
-    from .agents.base import SAPViolationError
-    if isinstance(exc, SAPViolationError):
-        return False
-    return not isinstance(exc, _NON_RETRYABLE)
+# Resilience is layered, NOT via node RetryPolicy (pass-4 #15): the reasoning_client
+# retries transient LLM failures with backoff; the agent nodes isolate per-agent
+# failures as a 'failed' status + failure_event (so one agent's error neither
+# crashes the run nor is retried into a re-executed SAP violation); the checkpointer
+# uses a self-healing pool; and GRAPH_RECURSION_LIMIT bounds loops. A node-level
+# RetryPolicy was dead — the nodes catch their own exceptions before LangGraph
+# would ever retry — and is therefore not used.
 
 # ── Graph builder ─────────────────────────────────────────────────────────────
 
@@ -93,20 +83,8 @@ def build_graph(checkpointer=None) -> StateGraph:
     """
     builder = StateGraph(HCGRCState)
 
-    # Retry only TRANSIENT node failures (network blips, checkpoint write hiccups,
-    # backend stalls) with backoff — ADR-0011 resilience (#165). Governance and
-    # logic errors must NEVER be retried: re-running a SAPViolationError would
-    # re-execute the pre-registration-firewall violation up to 3x instead of
-    # halting immediately (pass-2 #186/#188/#3/#5), and retrying NotImplementedError
-    # / ValueError just wastes backoff on a deterministic failure (#201/#18). Gate
-    # nodes are excluded entirely because they use interrupt().
-    agent_retry = RetryPolicy(
-        max_attempts=3, initial_interval=0.5, backoff_factor=2.0,
-        retry_on=_is_transient_node_error,
-    )
-
     # ── Phase 0 nodes ─────────────────────────────────────────────────────────
-    builder.add_node("orchestrator", t00_orchestrator_node, retry_policy=agent_retry)
+    builder.add_node("orchestrator", t00_orchestrator_node)
 
     # data_split_node needs synthetic_control_ids in Phase 0.
     # In Phase 1, DataStewardAgent writes real splits to disk.
@@ -119,9 +97,9 @@ def build_graph(checkpointer=None) -> StateGraph:
     builder.add_node("gate_1", gate_1_node)
 
     # ── Phase 1 nodes ─────────────────────────────────────────────────────────
-    builder.add_node("data_pipeline", data_pipeline_node, retry_policy=agent_retry)
-    builder.add_node("exploratory_phase", exploratory_phase_node, retry_policy=agent_retry)
-    builder.add_node("hypothesis_formalize", hypothesis_formalize_node, retry_policy=agent_retry)
+    builder.add_node("data_pipeline", data_pipeline_node)
+    builder.add_node("exploratory_phase", exploratory_phase_node)
+    builder.add_node("hypothesis_formalize", hypothesis_formalize_node)
     builder.add_node("gate_2", gate_2_node)
 
     # ── Phase 2 stub ────────────────────────────────────────────────────────────
@@ -185,8 +163,8 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
     .invoke() with a pre-configured Command resume.
     """
     # interrupt() is a no-op without a checkpointer — the gate could not pause for
-    # the operator. Default to an in-memory checkpointer so the runner actually
-    # parks at Gate 1 (#200); production passes a PostgresSaver.
+    # the operator. Default to the configured backend so the runner actually parks
+    # at the gate (#200/#226).
     checkpointer = checkpointer or configured_checkpointer()
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
@@ -204,7 +182,7 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
 
 
 def resume_run(run_id: str, decision: str, rationale: str, checkpointer,
-               *, checkpoint_id: str | None = None) -> dict[str, Any]:
+               *, gate_id: str | None = None, checkpoint_id: str | None = None) -> dict[str, Any]:
     """
     Resume a run parked at a gate interrupt with the operator's decision.
 
@@ -212,11 +190,15 @@ def resume_run(run_id: str, decision: str, rationale: str, checkpointer,
     it; this is the other half of the loop (#162). The operator's decision is
     delivered via the ADR-0014 governance channel and injected here as the
     interrupt's resume value, so the gate node observes
-    {'decision': ..., 'rationale': ...} and the graph continues from the
-    checkpoint.
+    {'gate_id': ..., 'decision': ..., 'rationale': ...} and continues.
 
-    Requires the SAME checkpointer the run was started with (thread_id == run_id),
-    so the parked state can be loaded.
+    Pass gate_id (the gate the operator was deciding on) so the gate-correlation
+    guard in _run_gate can reject a stale/misrouted decision targeted at a gate
+    other than the one currently parked (pass-4 #3). Without it the guard is
+    unreachable. The ADR-0014 channel should record and pass back the gate_id it
+    surfaced.
+
+    Requires the SAME checkpointer the run was started with (thread_id == run_id).
     """
     graph = build_graph(checkpointer=checkpointer)
     bootstrap_observability()
@@ -226,7 +208,9 @@ def resume_run(run_id: str, decision: str, rationale: str, checkpointer,
     }
     if checkpoint_id:
         config["configurable"]["checkpoint_id"] = checkpoint_id
-    resume_value = {"decision": decision, "rationale": rationale}
+    resume_value: dict[str, Any] = {"decision": decision, "rationale": rationale}
+    if gate_id is not None:
+        resume_value["gate_id"] = gate_id
     with run_trace_context(run_id):
         return graph.invoke(Command(resume=resume_value), config=config)
 
