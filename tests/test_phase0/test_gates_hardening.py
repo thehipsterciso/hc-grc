@@ -52,6 +52,31 @@ def test_already_decided():
     assert _already_decided(state, "gate_2") is False
 
 
+def test_rejected_is_not_terminal_so_gate_can_re_review():
+    # pass-2 #184/#187 regression guard: a rejected Gate 2 must re-fire on the
+    # reject → revise → re-review loop, so it must NOT count as already-decided.
+    state = initial_state(run_id="g-rej")
+    state["gate_status"] = {"gate_2": {"decision": "rejected"}}
+    assert _already_decided(state, "gate_2") is False
+    for terminal in ("approved", "deferred"):
+        state["gate_status"] = {"gate_2": {"decision": terminal}}
+        assert _already_decided(state, "gate_2") is True
+
+
+def test_retry_predicate_excludes_governance_and_logic_errors():
+    # pass-2 #186/#188 regression guard: SAP and deterministic logic errors must
+    # never be retried by node RetryPolicy.
+    from src.agents.base import SAPViolationError
+    from src.graph import _is_transient_node_error
+
+    assert _is_transient_node_error(SAPViolationError("x")) is False
+    assert _is_transient_node_error(NotImplementedError()) is False
+    assert _is_transient_node_error(ValueError()) is False
+    # genuine transient infra faults remain retryable
+    assert _is_transient_node_error(ConnectionError()) is True
+    assert _is_transient_node_error(TimeoutError()) is True
+
+
 # ── Gate 2 prerequisite failure writes a visible decision (#164 / #178) ────────
 
 

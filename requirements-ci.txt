@@ -1,8 +1,17 @@
 # Minimal dependencies for CI test runs (Phase 0 tests only).
 # Does NOT include the full ML stack (PyTorch, transformers, etc.) — those are
 # Phase 1 execution dependencies. CI runs the structural/protocol tests.
-langgraph>=0.2.28
-langchain-core>=0.2.28
+#
+# Versions are bounded to the same major as requirements.txt so CI exercises the
+# versions production runs on (pass-2 #8/#191). The Tier-2/Tier-3 LLM clients
+# (langchain-ollama, claude-agent-sdk) are intentionally omitted: the suite runs
+# with HCGRC_DISABLE_REASONING=1 and imports them lazily, so they are never needed.
+langgraph>=1.2,<2
+langgraph-checkpoint-postgres>=3.1,<4
+langchain-core>=1.4,<2
+# reasoning_client imports the OTel API at module load; config loads YAML.
+opentelemetry-sdk>=1.25,<2
+PyYAML>=6.0
 numpy>=1.26.4
 scikit-learn>=1.5.0
 pytest>=8.2.2

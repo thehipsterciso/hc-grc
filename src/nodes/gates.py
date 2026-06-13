@@ -57,6 +57,9 @@ def _rejection_event(gate_id: str, rationale: str, run_id: str) -> dict[str, Any
 
 
 _VALID_DECISIONS = {"approved", "rejected", "deferred"}
+# Terminal decisions stop a gate from re-firing on re-entry. 'rejected' is NOT
+# terminal — it routes back for re-review and must re-prompt the operator.
+_TERMINAL_DECISIONS = {"approved", "deferred"}
 
 
 def _parse_operator_response(resp: Any, gate_id: str) -> tuple[str, str]:
@@ -86,15 +89,18 @@ def _parse_operator_response(resp: Any, gate_id: str) -> tuple[str, str]:
 
 def _already_decided(state: HCGRCState, gate_id: str) -> bool:
     """
-    True if this gate already holds a final decision in gate_status.
+    True if this gate already holds a TERMINAL decision (approved/deferred).
 
-    Guards against a re-invocation (after the run already completed) re-firing the
-    interrupt and re-running downstream effects on top of a prior decision (#177).
-    Does not affect the normal interrupt/resume flow, where gate_status carries no
-    record for this gate until the node itself writes one.
+    Guards against a re-invocation re-firing the interrupt and re-running
+    downstream effects on top of a terminal decision (#177). A 'rejected' record
+    is deliberately NOT terminal: the Gate-2 reject → revise → re-review loop
+    (route_after_gate_2 → exploratory → … → gate_2) must re-fire the interrupt so
+    the operator is re-prompted, otherwise the gate short-circuits to {} and the
+    graph spins until GraphRecursionError (pass-2 #184/#187). The loop-back path
+    is responsible for producing the revised state that warrants re-review.
     """
     record = state.get("gate_status", {}).get(gate_id)
-    return bool(record) and record.get("decision") in _VALID_DECISIONS
+    return bool(record) and record.get("decision") in _TERMINAL_DECISIONS
 
 
 def _finalize_gate(state: HCGRCState, gate_id: str, decision: str,

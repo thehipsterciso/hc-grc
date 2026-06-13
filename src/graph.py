@@ -58,6 +58,24 @@ from .state import HCGRCState, initial_state
 # to exploratory analysis so a non-converging run fails loudly (#179).
 GRAPH_RECURSION_LIMIT = 50
 
+# Exceptions that must NOT be retried by node RetryPolicy: governance violations
+# and deterministic logic errors. Anything else (transient infra) is retryable.
+_NON_RETRYABLE = (
+    NotImplementedError,
+    ValueError,
+    KeyError,
+    TypeError,
+    AssertionError,
+)
+
+
+def _is_transient_node_error(exc: BaseException) -> bool:
+    """RetryPolicy predicate: retry transient faults, never governance/logic errors."""
+    from .agents.base import SAPViolationError
+    if isinstance(exc, SAPViolationError):
+        return False
+    return not isinstance(exc, _NON_RETRYABLE)
+
 # ── Graph builder ─────────────────────────────────────────────────────────────
 
 def build_graph(checkpointer=None) -> StateGraph:
@@ -74,11 +92,17 @@ def build_graph(checkpointer=None) -> StateGraph:
     """
     builder = StateGraph(HCGRCState)
 
-    # Retry transient node failures (network blips, checkpoint write hiccups,
-    # backend stalls) with backoff — ADR-0011 resilience (#165). Applied to the
-    # agent-bearing nodes; gate nodes are excluded because they use interrupt()
-    # and must not be re-executed on retry.
-    agent_retry = RetryPolicy(max_attempts=3, initial_interval=0.5, backoff_factor=2.0)
+    # Retry only TRANSIENT node failures (network blips, checkpoint write hiccups,
+    # backend stalls) with backoff — ADR-0011 resilience (#165). Governance and
+    # logic errors must NEVER be retried: re-running a SAPViolationError would
+    # re-execute the pre-registration-firewall violation up to 3x instead of
+    # halting immediately (pass-2 #186/#188/#3/#5), and retrying NotImplementedError
+    # / ValueError just wastes backoff on a deterministic failure (#201/#18). Gate
+    # nodes are excluded entirely because they use interrupt().
+    agent_retry = RetryPolicy(
+        max_attempts=3, initial_interval=0.5, backoff_factor=2.0,
+        retry_on=_is_transient_node_error,
+    )
 
     # ── Phase 0 nodes ─────────────────────────────────────────────────────────
     builder.add_node("orchestrator", t00_orchestrator_node, retry=agent_retry)
