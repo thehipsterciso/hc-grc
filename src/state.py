@@ -89,12 +89,14 @@ class HCGRCState(TypedDict):
     # Keys: model_name, model_hash, corpus_dvc_hash, timestamp_utc
     embedding_manifest: dict[str, Any] | None
 
-    # ── Exploratory analysis artifacts (append-only) ──────────────────────────
+    # ── Exploratory analysis artifacts (append, deduped) ──────────────────────
     # eda_artifacts: file paths to all EXP_* outputs from P1-P5 nodes.
     # Each node appends its artifact paths. Gate 3 verifies all 5 agents present.
+    # Deduped on merge so a Gate-2 reject → re-run-exploratory loop cannot
+    # accumulate the same artifact path repeatedly (#235).
     # eda_agent_statuses: per-agent completion records.
     # Keys: agent_id, status ("completed"|"stub_pending"|"failed"), note, timestamp_utc
-    eda_artifacts: Annotated[list[str], lambda a, b: a + b]
+    eda_artifacts: Annotated[list[str], lambda a, b: a + [x for x in b if x not in a]]
     eda_agent_statuses: Annotated[list[dict[str, Any]], lambda a, b: a + b]
 
     # ── Formalized hypothesis set (append-only) ───────────────────────────────

@@ -39,7 +39,7 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command, RetryPolicy
 
-from .checkpointer import get_checkpointer
+from .checkpointer import configured_checkpointer
 from .infrastructure.observability.phoenix_setup import (
     bootstrap_observability,
     run_trace_context,
@@ -187,7 +187,7 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
     # interrupt() is a no-op without a checkpointer — the gate could not pause for
     # the operator. Default to an in-memory checkpointer so the runner actually
     # parks at Gate 1 (#200); production passes a PostgresSaver.
-    checkpointer = checkpointer or get_checkpointer(use_memory=True)
+    checkpointer = checkpointer or configured_checkpointer()
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
     bootstrap_observability()
@@ -239,7 +239,7 @@ def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str
     nodes will record stub_pending statuses (NotImplementedError caught). This
     verifies the Phase 1 graph topology before real SCF data is loaded.
     """
-    checkpointer = checkpointer or get_checkpointer(use_memory=True)
+    checkpointer = checkpointer or configured_checkpointer()
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
     bootstrap_observability()

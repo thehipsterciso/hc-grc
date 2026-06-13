@@ -49,13 +49,38 @@ def _register_pool_cleanup(pool) -> None:
 def get_postgres_connection_string() -> str:
     """
     Return the PostgreSQL connection string.
-    Reads from HCGRC_POSTGRES_URL env var or falls back to localhost default.
-    Never logged, never committed.
+
+    Precedence: HCGRC_POSTGRES_URL env var → the checkpointing.{host,port,database}
+    section of platform.yaml → localhost default. This makes the platform.yaml
+    checkpointing config live instead of dead (#225). Never logged, never committed.
     """
-    return os.environ.get(
-        "HCGRC_POSTGRES_URL",
-        "postgresql://localhost:5432/hcgrc",
-    )
+    env_url = os.environ.get("HCGRC_POSTGRES_URL")
+    if env_url:
+        return env_url
+    try:
+        from .infrastructure.config import load_platform_config
+        cp = load_platform_config().get("checkpointing", {}) or {}
+        host = cp.get("host", "localhost")
+        port = cp.get("port", 5432)
+        database = cp.get("database", "hcgrc")
+        return f"postgresql://{host}:{port}/{database}"
+    except Exception:
+        return "postgresql://localhost:5432/hcgrc"
+
+
+def configured_checkpointer():
+    """
+    Return the checkpointer the platform config asks for: MemorySaver when
+    checkpointing.backend == 'memory', else the pooled PostgresSaver (#226).
+    Runners use this as the default instead of hardcoding in-memory.
+    """
+    backend = "postgres"
+    try:
+        from .infrastructure.config import load_platform_config
+        backend = (load_platform_config().get("checkpointing", {}) or {}).get("backend", "postgres")
+    except Exception:
+        backend = "postgres"
+    return get_checkpointer(use_memory=(backend == "memory"))
 
 
 # ── Checkpointer factory ──────────────────────────────────────────────────────
