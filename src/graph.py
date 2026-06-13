@@ -38,6 +38,10 @@ from typing import Any
 
 from langgraph.graph import END, StateGraph
 
+from .infrastructure.observability.phoenix_setup import (
+    bootstrap_observability,
+    run_trace_context,
+)
 from .nodes.data_split import data_split_node
 from .nodes.gates import gate_1_node, gate_2_node, gate_3_node, gate_4_node, gate_5_node
 from .nodes.orchestrator import route_after_gate_1, route_after_gate_2, t00_orchestrator_node
@@ -152,8 +156,10 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
     """
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
+    bootstrap_observability(state["run_id"])
     thread_config = {"configurable": {"thread_id": state["run_id"]}}
-    result = graph.invoke(state, config=thread_config)
+    with run_trace_context(state["run_id"]):
+        result = graph.invoke(state, config=thread_config)
     return result
 
 
@@ -167,6 +173,8 @@ def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str
     """
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
+    bootstrap_observability(state["run_id"])
     thread_config = {"configurable": {"thread_id": state["run_id"]}}
-    result = graph.invoke(state, config=thread_config)
+    with run_trace_context(state["run_id"]):
+        result = graph.invoke(state, config=thread_config)
     return result

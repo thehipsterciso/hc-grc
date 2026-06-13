@@ -9,23 +9,33 @@ Two responsibilities, deliberately separated:
 
   1. The SERVER is a long-lived process — run it via the `phoenix serve` CLI
      (see launch_server_command()) or the launchd plist in scripts/. It is NOT
-     launched from inside the application process, because returning from a
-     setup function would tear an embedded server down. Use px.launch_app()
-     only for throwaway interactive sessions.
+     launched from inside the application process.
 
-  2. INSTRUMENTATION is wired per-process: instrument_langchain() registers an
-     OTel tracer provider pointed at the running server and turns on the
-     LangChain instrumentor so every agent LLM/chain call is traced.
+  2. INSTRUMENTATION is wired per-process via bootstrap_observability(), called
+     once by each run entrypoint. It registers a global OTel tracer provider
+     (BatchSpanProcessor — spans are buffered and exported in the background, so
+     a momentary server outage drops spans rather than blocking or failing the
+     run) pointed at the running server, and turns on the LangChain instrumentor.
+     Because the provider is registered globally, the spans the reasoning_client
+     emits for BOTH tiers — including Tier-3 (claude-agent-sdk), which LangChain
+     instrumentation does not see — export to Phoenix too.
 
-run_id propagation (ADR-0015 #79): set run_id as a span attribute on the root
-span of each run so traces cross-reference MLflow/PostgresSaver/PROV-DM. With
-LangChain, pass it via run metadata, e.g.:
-    config={"metadata": {"run_id": state["run_id"]}}
+run_id propagation (ADR-0015 #79): wrap a run in run_trace_context(run_id) so
+every span produced during the run carries the run_id as session.id + metadata,
+cross-referencing MLflow / PostgresSaver / PROV-DM.
 """
 
 from __future__ import annotations
 
+import os
+from contextlib import contextmanager
+
 from ..config import load_platform_config
+
+# Cached registered provider — registration is idempotent within a process
+# (repeat bootstrap calls return the same provider instead of double-registering
+# the instrumentor, which would duplicate every span).
+_PROVIDER = None
 
 
 def _phoenix_cfg() -> dict:
@@ -51,24 +61,73 @@ def launch_server_command() -> str:
 
 def instrument_langchain(project_name: str | None = None):
     """
-    Register an OTel tracer provider pointed at the running Phoenix server and
-    enable LangChain tracing for this process.
+    Register a global OTel tracer provider pointed at the Phoenix server (using a
+    background BatchSpanProcessor) and enable LangChain tracing for this process.
 
-    Idempotent within a process. Requires the Phoenix server to be reachable at
-    phoenix_endpoint(); traces are buffered/dropped if it is not.
+    Idempotent: the first call registers; subsequent calls return the cached
+    provider without re-instrumenting (so spans are never duplicated).
 
     Returns the tracer provider.
     """
+    global _PROVIDER
+    if _PROVIDER is not None:
+        return _PROVIDER
+
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from phoenix.otel import register
 
     cfg = _phoenix_cfg()
-    tracer_provider = register(
+    provider = register(
         project_name=project_name or cfg.get("project_name", "hc-grc"),
         endpoint=phoenix_endpoint(),
+        batch=True,                        # BatchSpanProcessor: buffer + async export
+        set_global_tracer_provider=True,   # so reasoning_client spans export too
     )
-    LangChainInstrumentor().instrument(tracer_provider=tracer_provider, skip_dep_check=True)
-    return tracer_provider
+    LangChainInstrumentor().instrument(tracer_provider=provider, skip_dep_check=True)
+    _PROVIDER = provider
+    return provider
+
+
+def bootstrap_observability(run_id: str | None = None):
+    """
+    Idempotently wire tracing for the current process. Called once by each run
+    entrypoint (graph runners). Degrades to a no-op — never raising — when tracing
+    is disabled by config, switched off via HCGRC_DISABLE_TRACING, or the
+    instrumentation stack cannot be initialized. Returns the provider or None.
+    """
+    if os.environ.get("HCGRC_DISABLE_TRACING", "").strip():
+        return None
+    try:
+        cfg = _phoenix_cfg()
+    except Exception:
+        return None
+    if not cfg.get("enabled", True):
+        return None
+    try:
+        return instrument_langchain()
+    except Exception:
+        # Missing deps, server unreachable at registration, etc. — tracing is
+        # best-effort observability and must never block the research run.
+        return None
+
+
+@contextmanager
+def run_trace_context(run_id: str | None):
+    """
+    Context manager that stamps run_id onto every span produced within it
+    (session.id + metadata.run_id), for cross-store correlation. No-op if the
+    OpenInference context helper is unavailable or run_id is None.
+    """
+    if not run_id:
+        yield
+        return
+    try:
+        from openinference.instrumentation import using_attributes
+    except Exception:
+        yield
+        return
+    with using_attributes(session_id=run_id, metadata={"run_id": run_id}):
+        yield
 
 
 if __name__ == "__main__":  # pragma: no cover - operational entrypoint
