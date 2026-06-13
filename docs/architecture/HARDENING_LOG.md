@@ -20,7 +20,8 @@ Passes are never edited after they are written. New passes are appended.
 | Pass | Date (UTC) | Confirmed | Fixed | Status |
 |------|------------|-----------|-------|--------|
 | 1 | 2026-06-13 | 39 (7H/19M/13L) | 39 | ✅ complete |
-| 2 | 2026-06-13 | _pending workflow_ | — | re-audit running |
+| 2 | 2026-06-13 | 33 (1C/4H/16M/12L) | 33 | ✅ complete |
+| 3 | 2026-06-13 | _pending workflow_ | — | re-audit running |
 
 ---
 
@@ -85,4 +86,30 @@ Passes are never edited after they are written. New passes are appended.
 
 ## Pass 2 — 2026-06-13
 
-_Re-audit of the hardened code (same dimensions, current sources). Findings recorded when the workflow completes._
+**Re-audit** of the hardened code (run `wf_df446928-130`, 75 agents). 33 confirmed
+findings (1 critical, 4 high, 16 medium, 12 low) after 28 rejected. Tracked as
+issues #184–#216; **6 were regressions introduced by pass-1 batches** (label
+`regression`). The value of iterating: pass 2 caught a **critical** regression —
+the pass-1 `_already_decided` idempotency guard (#177) had silently killed the
+Gate-2 reject→re-review governance loop.
+
+### Fix batches (all 33 closed)
+- **Batch 6 — regressions + deps** (`2027513`): #184/#187 reject-loop re-fire,
+  #186/#188/#201 RetryPolicy `retry_on` excludes governance/logic errors,
+  #193 dep upper bounds, #192 qdrant-client declared, #191 CI deps pinned.
+- **Batch 7 — reasoning_client v3** (`77695be`): #185 T3 rate-window backpressure,
+  #194/#209 error classification, #195/#196/#197/#198 Ollama timeout/num_ctx/seed/
+  num_predict, #203/#204 span usage + real model, #208 retry clamp, #210 model-pull
+  liveness, #189/#190/#205 tests.
+- **Batch 8 — langgraph/obs/config** (`f59f29e`): #200 runner default checkpointer,
+  #206 retry_policy= + deprecation-as-error, #213 drop dead gate nodes, #202
+  IMPLEMENTED marker, #207 vector_store validation, #215 span flush, #216 loopback
+  guard, #199/#211/#212/#214 bench + docs.
+
+**Pass 2 result: 33/33 fixed, 97 tests passing.** Pass 3 re-audits again.
+
+---
+
+## Pass 3 — 2026-06-13
+
+_Re-audit after pass-2 fixes. Findings recorded when the workflow completes._
