@@ -13,7 +13,7 @@ import src.infrastructure.observability.phoenix_setup as ps
 
 def test_bootstrap_noop_when_disabled(monkeypatch):
     monkeypatch.setenv("HCGRC_DISABLE_TRACING", "1")
-    assert ps.bootstrap_observability("run-x") is None
+    assert ps.bootstrap_observability() is None
 
 
 def test_instrument_is_idempotent(monkeypatch):
@@ -23,7 +23,7 @@ def test_instrument_is_idempotent(monkeypatch):
     sentinel = object()
     monkeypatch.setattr(ps, "_PROVIDER", sentinel)
     assert ps.instrument_langchain() is sentinel
-    assert ps.bootstrap_observability("run-y") is sentinel
+    assert ps.bootstrap_observability() is sentinel
 
 
 def test_run_trace_context_is_a_safe_noop_without_run_id():

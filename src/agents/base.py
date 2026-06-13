@@ -4,7 +4,7 @@ HC-GRC agent base types and contracts.
 All Phase 1 research agents inherit from BaseResearchAgent or implement the
 same __call__ signature. The contract is:
 
-    agent(state: HCGRCState, **kwargs) -> dict[str, Any]
+    agent(state: HCGRCState) -> dict[str, Any]
 
 The return dict is a LangGraph partial state update — merged into HCGRCState
 by the graph runtime. Agents must never mutate state in place.

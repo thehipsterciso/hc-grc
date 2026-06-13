@@ -106,7 +106,7 @@ def instrument_langchain(project_name: str | None = None):
     return provider
 
 
-def bootstrap_observability(run_id: str | None = None):
+def bootstrap_observability():
     """
     Idempotently wire tracing for the current process. Called once by each run
     entrypoint (graph runners). Degrades to a no-op — never raising — when tracing
@@ -132,20 +132,31 @@ def bootstrap_observability(run_id: str | None = None):
 @contextmanager
 def run_trace_context(run_id: str | None):
     """
-    Context manager that stamps run_id onto every span produced within it
-    (session.id + metadata.run_id), for cross-store correlation. No-op if the
-    OpenInference context helper is unavailable or run_id is None.
+    Context manager that stamps run_id onto every span produced within it, for
+    cross-store correlation. Sets it two ways so BOTH span sources pick it up:
+    OpenInference using_attributes (LangChain auto-spans → session.id) AND OTel
+    baggage `hcgrc.run_id`, which the reasoning_client seam reads as a fallback so
+    its manual T2/T3 spans carry the run_id even when the caller didn't pass it
+    explicitly (#239). No-op if run_id is None or the helpers are unavailable.
     """
     if not run_id:
         yield
         return
-    try:
-        from openinference.instrumentation import using_attributes
-    except Exception:
-        yield
-        return
-    with using_attributes(session_id=run_id, metadata={"run_id": run_id}):
-        yield
+    from contextlib import ExitStack
+
+    from opentelemetry import baggage, context
+
+    with ExitStack() as stack:
+        try:
+            from openinference.instrumentation import using_attributes
+            stack.enter_context(using_attributes(session_id=run_id, metadata={"run_id": run_id}))
+        except Exception:
+            pass
+        token = context.attach(baggage.set_baggage("hcgrc.run_id", run_id))
+        try:
+            yield
+        finally:
+            context.detach(token)
 
 
 if __name__ == "__main__":  # pragma: no cover - operational entrypoint

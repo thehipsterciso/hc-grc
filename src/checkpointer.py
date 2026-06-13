@@ -30,6 +30,20 @@ from langgraph.checkpoint.memory import MemorySaver
 # checkpoint schema migrations across concurrent initializers (get_checkpointer).
 _MIGRATION_LOCK_KEY = 0x4843_4752  # "HCGR"
 
+# Pools opened by get_checkpointer, closed once at process exit. A single atexit
+# handler closes them all — registering one per call would accumulate handlers
+# across repeated get_checkpointer() calls (#249).
+_OPEN_POOLS: list = []
+_atexit_registered = False
+
+
+def _register_pool_cleanup(pool) -> None:
+    global _atexit_registered
+    _OPEN_POOLS.append(pool)
+    if not _atexit_registered:
+        atexit.register(lambda: [p.close() for p in _OPEN_POOLS])
+        _atexit_registered = True
+
 # ── Connection string ─────────────────────────────────────────────────────────
 
 def get_postgres_connection_string() -> str:
@@ -93,8 +107,9 @@ def get_checkpointer(use_memory: bool = False):
         )
         # PostgresSaver does not own the pool, so close it cleanly at process exit
         # (otherwise the pool's worker thread cannot be joined during interpreter
-        # finalization, raising a noisy PythonFinalizationError).
-        atexit.register(pool.close)
+        # finalization, raising a noisy PythonFinalizationError). A single shared
+        # atexit handler closes all pools — no per-call accumulation (#249).
+        _register_pool_cleanup(pool)
         # Serialize schema migrations across processes with a session advisory
         # lock (pass-1 #33). The lock and the migration DDL MUST run on the SAME
         # connection — pg_advisory_lock is session-scoped, and a pool-backed

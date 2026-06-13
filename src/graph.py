@@ -190,7 +190,7 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
     checkpointer = checkpointer or get_checkpointer(use_memory=True)
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
-    bootstrap_observability(state["run_id"])
+    bootstrap_observability()
     # Explicit recursion_limit bounds the Gate-2-rejected → exploratory loop so a
     # run that never converges terminates with GraphRecursionError instead of
     # looping unbounded (#179).
@@ -219,7 +219,7 @@ def resume_run(run_id: str, decision: str, rationale: str, checkpointer,
     so the parked state can be loaded.
     """
     graph = build_graph(checkpointer=checkpointer)
-    bootstrap_observability(run_id)
+    bootstrap_observability()
     config: dict[str, Any] = {
         "configurable": {"thread_id": run_id},
         "recursion_limit": GRAPH_RECURSION_LIMIT,
@@ -242,7 +242,7 @@ def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str
     checkpointer = checkpointer or get_checkpointer(use_memory=True)
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
-    bootstrap_observability(state["run_id"])
+    bootstrap_observability()
     # Explicit recursion_limit bounds the Gate-2-rejected → exploratory loop so a
     # run that never converges terminates with GraphRecursionError instead of
     # looping unbounded (#179).

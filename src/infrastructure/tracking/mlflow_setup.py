@@ -29,7 +29,13 @@ import mlflow
 
 from ..config import load_platform_config, repo_root
 
-_REMOTE_SCHEMES = ("http://", "https://", "postgresql:", "file:")
+# Any non-sqlite backing-store URI passes through untouched. Includes DB schemes
+# (postgres/postgresql/mysql/mssql) — a bare `postgres://` was previously not
+# recognized and got mangled into a bogus local path (#253).
+_REMOTE_SCHEMES = (
+    "http://", "https://", "file:",
+    "postgresql:", "postgres:", "mysql:", "mysql+", "mssql:", "mssql+",
+)
 _SQLITE_PREFIX = "sqlite:///"
 
 

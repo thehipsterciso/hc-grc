@@ -125,8 +125,24 @@ _timeout_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="reasoning-
 
 
 def _with_timeout(fn, timeout: float, what: str):
-    """Run a sync callable with a hard timeout; raise ReasoningError on overrun."""
-    future = _timeout_pool.submit(fn)
+    """Run a sync callable with a hard timeout; raise ReasoningError on overrun.
+
+    Propagates the current OpenTelemetry context into the worker thread so spans
+    created by fn (e.g. the LangChain ChatOllama span) nest under the active
+    reasoning.complete span instead of being orphaned (#238).
+    """
+    from opentelemetry import context as otel_context
+
+    ctx = otel_context.get_current()
+
+    def _run():
+        token = otel_context.attach(ctx)
+        try:
+            return fn()
+        finally:
+            otel_context.detach(token)
+
+    future = _timeout_pool.submit(_run)
     try:
         return future.result(timeout=timeout)
     except FuturesTimeout as exc:
@@ -178,7 +194,7 @@ def _ollama(model: str, temperature: float, json_mode: bool) -> Any:
 
 
 def _t2_complete(prompt: str, system: str | None, temperature: float, model: str,
-                 json_mode: bool) -> str:
+                 json_mode: bool) -> tuple[str, dict[str, Any]]:
     llm = _ollama(model, temperature, json_mode)
     messages: list[tuple[str, str]] = []
     if system:
@@ -273,21 +289,29 @@ async def _t3_async(prompt: str, system: str | None, max_turns: int,
 def _t3_complete(prompt: str, system: str | None, max_turns: int,
                  model: str | None) -> tuple[str, dict[str, Any]]:
     try:
-        return _run_sync(_t3_async(prompt, system, max_turns, model))
+        text, meta = _run_sync(_t3_async(prompt, system, max_turns, model))
+        if not text:
+            # An empty frontier reply is not a valid high-stakes result — retry
+            # rather than return "" as success (#246).
+            raise ReasoningError("Tier 3 (Agent SDK) returned an empty reply")
+        return text, meta
     except ReasoningError:
         raise
     except (asyncio.TimeoutError, FuturesTimeout) as exc:
         raise ReasoningError(f"Tier 3 (Agent SDK) timed out after {T3_TIMEOUT:.0f}s") from exc
     except Exception as exc:
-        msg = str(exc).lower()
+        # Classify on both the message and the exception type name — substring
+        # matching alone is fragile across SDK versions (#229).
+        sig = f"{type(exc).__name__} {exc}".lower()
         # Subscription rate window — queue and resume with long backpressure,
         # never spill to a metered API (ADR-0016, #185).
-        if any(k in msg for k in ("rate limit", "rate_limit", "429", "overloaded",
-                                  "usage limit", "too many requests")):
+        if any(k in sig for k in ("rate limit", "rate_limit", "ratelimit", "429",
+                                  "overloaded", "usage limit", "too many requests")):
             raise RateLimitError(f"Tier 3 rate window: {exc}") from exc
         # CLI absent / auth failure — permanent, not worth retrying (#194).
-        if any(k in msg for k in ("not found", "command not found", "no such file",
-                                  "auth", "credential", "401", "403", "unauthor")):
+        if any(k in sig for k in ("not found", "notfound", "command not found",
+                                  "no such file", "auth", "credential", "401",
+                                  "403", "unauthor")):
             raise PermanentReasoningError(f"Tier 3 (Agent SDK) unavailable: {exc}") from exc
         raise ReasoningError(f"Tier 3 (Agent SDK) call failed: {exc}") from exc
 
@@ -348,6 +372,15 @@ def complete(
         )
     if os.environ.get("HCGRC_DISABLE_REASONING", "").strip():
         raise ReasoningError("reasoning disabled via HCGRC_DISABLE_REASONING")
+
+    # Fall back to the run_id stamped in OTel baggage by run_trace_context, so a
+    # seam span carries the run_id even when the caller didn't pass it (#239).
+    if run_id is None:
+        try:
+            from opentelemetry import baggage
+            run_id = baggage.get_baggage("hcgrc.run_id") or None
+        except Exception:
+            run_id = None
 
     # Known model id only — never fabricate one (#204). For a T3 run on the
     # subscription default, the real model is read back from the response.
