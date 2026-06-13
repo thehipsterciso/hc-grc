@@ -320,6 +320,7 @@ def hypothesis_formalize_node(state: HCGRCState) -> dict[str, Any]:
     from EDA outputs and HARKing validation stub. Output is the Gate 2 input.
     """
     run_id = state["run_id"]
+    agent_id = "hypothesis-formalizer"
 
     try:
         agent_update = _hypothesis_formalizer(state)
@@ -329,11 +330,32 @@ def hypothesis_formalize_node(state: HCGRCState) -> dict[str, Any]:
             "prov_activities": [_prov("hypothesis_formalization", run_id,
                                        hypothesis_count=hypothesis_count)],
         }
-    except NotImplementedError:
+    except NotImplementedError as exc:
+        # Only an unimplemented agent legitimately raises NotImplementedError;
+        # once IMPLEMENTED it is a real bug, not a stub (#237).
+        if getattr(_hypothesis_formalizer, "IMPLEMENTED", False):
+            return {
+                "eda_agent_statuses": [_failed_status(agent_id, run_id, exc)],
+                "failure_events": [_failure_event(agent_id, run_id, exc)],
+                "prov_activities": [_prov("hypothesis_formalization_failed", run_id,
+                                          error=repr(exc))],
+            }
         return {
-            "eda_agent_statuses": [_stub_status("hypothesis-formalizer", run_id)],
+            "eda_agent_statuses": [_stub_status(agent_id, run_id)],
             "prov_activities": [_prov("hypothesis_formalization_stub", run_id,
                                        note="NotImplementedError — Phase 1 pending")],
+        }
+    except Exception as exc:
+        # Isolate a real runtime error: record it instead of crashing the graph,
+        # and emit a failure_event for the monitor (#35). SAP violations propagate.
+        from ..agents.base import SAPViolationError
+        if isinstance(exc, SAPViolationError):
+            raise
+        return {
+            "eda_agent_statuses": [_failed_status(agent_id, run_id, exc)],
+            "failure_events": [_failure_event(agent_id, run_id, exc)],
+            "prov_activities": [_prov("hypothesis_formalization_failed", run_id,
+                                      error=repr(exc))],
         }
 
 

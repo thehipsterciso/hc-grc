@@ -139,7 +139,10 @@ def _run_sync(coro: Any) -> Any:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
-    return _timeout_pool.submit(lambda: asyncio.run(coro)).result()
+    # Bound the cross-thread wait so a starved/leaked pool can't deadlock a node
+    # forever (#227). The inner coroutine already has its own asyncio timeout; this
+    # is a backstop slightly beyond it.
+    return _timeout_pool.submit(lambda: asyncio.run(coro)).result(timeout=T3_TIMEOUT + 30)
 
 
 # ── Tier 2: local Ollama ──────────────────────────────────────────────────────
@@ -160,13 +163,17 @@ def _ollama(model: str, temperature: float, json_mode: bool) -> Any:
         "base_url": T2_BASE_URL,
         "num_ctx": T2_NUM_CTX,         # avoid silent truncation at the 2048 default (#196)
         "seed": T2_SEED,               # reproducible greedy decoding (#197)
-        "num_predict": T2_NUM_PREDICT,  # bound output length (#198)
         "client_kwargs": {"timeout": T2_TIMEOUT},  # native HTTP timeout (#195)
     }
     if json_mode:
         # Native structured-output: Ollama constrains decoding to valid JSON,
-        # far more reliable than instructing + regex-extracting (#159, #175).
+        # far more reliable than instructing + regex-extracting (#159, #175). Do
+        # NOT cap num_predict here — format=json terminates at the end of a valid
+        # JSON value, and a num_predict cap would truncate it into INVALID JSON
+        # (#231). The hard timeout remains the runaway backstop.
         kwargs["format"] = "json"
+    else:
+        kwargs["num_predict"] = T2_NUM_PREDICT  # bound free-text output length (#198)
     return ChatOllama(**kwargs)
 
 
@@ -185,6 +192,11 @@ def _t2_complete(prompt: str, system: str | None, temperature: float, model: str
 
     try:
         text = _with_timeout(_call, T2_TIMEOUT, f"Tier 2 (Ollama @ {T2_BASE_URL})").strip()
+        if not text:
+            # An empty/whitespace reply is not a valid result — surface it as a
+            # retryable error rather than silently returning "" and corrupting a
+            # JSON caller or recording an empty high-stakes answer (#233).
+            raise ReasoningError(f"Tier 2 (Ollama @ {T2_BASE_URL}) returned an empty reply")
         return text, {"model": model}
     except ReasoningError:
         raise
@@ -356,12 +368,17 @@ def complete(
             span.set_attribute("session.id", run_id)
         if agent_id:
             span.set_attribute("hcgrc.agent_id", agent_id)
+        if system:
+            # Record the system prompt too — without it the trace input is
+            # incomplete and the call is not reproducible from the span (#240).
+            span.set_attribute("llm.system", system[:_SPAN_TEXT_CAP])
         span.set_attribute("input.value", prompt[:_SPAN_TEXT_CAP])
 
         last_exc: ReasoningError | None = None
-        attempt_no = 0
-        # Two retry budgets: ordinary transient failures vs. T3 rate windows,
-        # which get more, longer-spaced attempts (queue-and-resume, ADR-0016 #185).
+        # Independent retry budgets so a mix of transient and rate-limit errors
+        # cannot exhaust each other's allowance prematurely (#228).
+        transient_attempts = 0
+        rate_attempts = 0
         while True:
             try:
                 out, meta = _attempt(tier, prompt, system, temperature, max_turns, model, _json_mode)
@@ -371,7 +388,7 @@ def complete(
                 if meta.get("cost_usd") is not None:
                     span.set_attribute("llm.cost_usd", meta["cost_usd"])
                 span.set_attribute("output.value", out[:_SPAN_TEXT_CAP])
-                span.set_attribute("llm.retries", attempt_no)
+                span.set_attribute("llm.retries", transient_attempts + rate_attempts)
                 return out
             except PermanentReasoningError as exc:
                 # Deterministic failure — do not retry (#194).
@@ -379,19 +396,19 @@ def complete(
                 break
             except RateLimitError as exc:
                 last_exc = exc
-                if attempt_no >= RATE_LIMIT_MAX_RETRIES:
+                if rate_attempts >= RATE_LIMIT_MAX_RETRIES:
                     break
                 span.add_event("rate_limit_backpressure",
-                               {"attempt": attempt_no, "sleep_s": RATE_LIMIT_BACKOFF})
-                time.sleep(RATE_LIMIT_BACKOFF * (attempt_no + 1))
-                attempt_no += 1
+                               {"attempt": rate_attempts, "sleep_s": RATE_LIMIT_BACKOFF})
+                time.sleep(RATE_LIMIT_BACKOFF * (rate_attempts + 1))
+                rate_attempts += 1
             except ReasoningError as exc:
                 last_exc = exc
-                if attempt_no >= MAX_RETRIES:
+                if transient_attempts >= MAX_RETRIES:
                     break
-                span.add_event("retry", {"attempt": attempt_no, "error": str(exc)[:300]})
-                time.sleep(BACKOFF_BASE ** attempt_no)
-                attempt_no += 1
+                span.add_event("retry", {"attempt": transient_attempts, "error": str(exc)[:300]})
+                time.sleep(BACKOFF_BASE ** transient_attempts)
+                transient_attempts += 1
         # Exhausted retries.
         span.record_exception(last_exc)
         span.set_status(trace.StatusCode.ERROR, str(last_exc))
@@ -414,18 +431,26 @@ def complete_json(
 
     On T2 this uses Ollama's native JSON mode (constrained decoding). The reply is
     then parsed, falling back to a balanced-brace extractor for models that wrap
-    JSON in prose/fences. Raises ReasoningError if no valid JSON can be recovered.
+    JSON in prose/fences. A parse failure is retried (re-generating the reply) up
+    to MAX_RETRIES — the retry budget belongs here, not only in complete() (#230).
+    Raises ReasoningError if no valid JSON can be recovered.
     """
     json_system = (system + "\n\n" if system else "") + (
         "Respond with ONLY a single valid JSON value and no other text, "
         "no markdown fences, no commentary."
     )
-    raw = complete(
-        tier, prompt, system=json_system, temperature=temperature,
-        max_turns=max_turns, model=model, run_id=run_id, agent_id=agent_id,
-        _json_mode=True,
-    )
-    return _extract_json(raw)
+    last_exc: ReasoningError | None = None
+    for attempt in range(MAX_RETRIES + 1):
+        raw = complete(
+            tier, prompt, system=json_system, temperature=temperature,
+            max_turns=max_turns, model=model, run_id=run_id, agent_id=agent_id,
+            _json_mode=True,
+        )
+        try:
+            return _extract_json(raw)
+        except ReasoningError as exc:
+            last_exc = exc  # bad/garbled JSON — regenerate and try again
+    raise last_exc
 
 
 def _extract_json(text: str) -> Any:
@@ -516,8 +541,10 @@ def is_available(tier: Tier) -> bool:
                 names = [m.get("name", "") for m in _json.loads(r.read()).get("models", [])]
         except Exception:
             return False
-        base = T2_MODEL.split(":")[0]
-        return any(n == T2_MODEL or n.split(":")[0] == base for n in names)
+        # Exact match only: a prefix match (e.g. configured llama3.1:8b vs a
+        # pulled llama3.1:70b) would pass here but complete() would then fail as
+        # "model not found" (#232). Ollama tags an untagged pull as ":latest".
+        return any(n == T2_MODEL or n == f"{T2_MODEL}:latest" for n in names)
     if tier is Tier.T3:
         # The `claude` CLI must be present and an OAuth token / stored creds
         # available — no frontier turn spent.

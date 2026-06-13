@@ -63,6 +63,13 @@ def run_benchmark(use_memory: bool = False) -> dict[str, Any]:
 
     Timing is wall-clock around each step.
     """
+    # Measure checkpoint write/read, NOT LLM inference: the orchestrator node would
+    # otherwise call the reasoning_client and fold model latency into the timing
+    # (#234). Disable reasoning + tracing for the duration of the benchmark.
+    import os
+    os.environ["HCGRC_DISABLE_REASONING"] = "1"
+    os.environ["HCGRC_DISABLE_TRACING"] = "1"
+
     checkpointer = get_checkpointer(use_memory=use_memory)
     backend = "MemorySaver" if use_memory else "PostgresSaver"
     graph = build_graph(checkpointer=checkpointer)

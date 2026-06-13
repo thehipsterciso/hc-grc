@@ -34,8 +34,10 @@ from contextlib import contextmanager
 from ..config import load_platform_config
 
 # ADR-0002: traces carry SCF-derived content and must never leave the machine.
-# The OTLP endpoint is required to be loopback.
-_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+# The OTLP endpoint is required to be loopback. 0.0.0.0 is intentionally EXCLUDED
+# — it binds all interfaces (exposing traces beyond the host), which is exactly the
+# data-sovereignty exposure this guard exists to prevent (#241).
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 # Cached registered provider — registration is idempotent within a process
 # (repeat bootstrap calls return the same provider instead of double-registering
