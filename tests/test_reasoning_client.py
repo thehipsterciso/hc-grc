@@ -84,7 +84,7 @@ def test_retry_then_success(monkeypatch):
         calls["n"] += 1
         if calls["n"] < 2:
             raise ReasoningError("transient")
-        return "ok"
+        return "ok", {"model": "m"}
 
     monkeypatch.setattr(rc, "_attempt", flaky)
     assert complete(Tier.T2, "x") == "ok"
@@ -104,3 +104,88 @@ def test_retry_exhausted_raises(monkeypatch):
     with pytest.raises(ReasoningError, match="down"):
         complete(Tier.T2, "x")
     assert calls["n"] == rc.MAX_RETRIES + 1
+
+
+def test_permanent_error_is_not_retried(monkeypatch):
+    monkeypatch.delenv("HCGRC_DISABLE_REASONING", raising=False)
+    monkeypatch.setattr(rc.time, "sleep", lambda *_: None)
+    calls = {"n": 0}
+
+    def permanent(*args, **kwargs):
+        calls["n"] += 1
+        raise rc.PermanentReasoningError("model missing")
+
+    monkeypatch.setattr(rc, "_attempt", permanent)
+    with pytest.raises(rc.PermanentReasoningError):
+        complete(Tier.T2, "x")
+    assert calls["n"] == 1  # exactly one attempt, no retry
+
+
+def test_rate_limit_uses_extended_backpressure(monkeypatch):
+    monkeypatch.delenv("HCGRC_DISABLE_REASONING", raising=False)
+    sleeps = []
+    monkeypatch.setattr(rc.time, "sleep", lambda s: sleeps.append(s))
+    calls = {"n": 0}
+
+    def rate_limited(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise rc.RateLimitError("429 too many requests")
+        return "recovered", {"model": "m"}
+
+    monkeypatch.setattr(rc, "_attempt", rate_limited)
+    assert complete(Tier.T3, "x") == "recovered"
+    # backpressure waits are the long rate-limit ones, not the short transient base
+    assert all(s >= rc.RATE_LIMIT_BACKOFF for s in sleeps)
+
+
+def test_complete_json_parses_stubbed_reply(monkeypatch):
+    monkeypatch.delenv("HCGRC_DISABLE_REASONING", raising=False)
+    monkeypatch.setattr(rc, "_attempt", lambda *a, **k: ('{"relation": "subset"}', {"model": "m"}))
+    assert rc.complete_json(Tier.T2, "classify") == {"relation": "subset"}
+
+
+def test_with_timeout_raises_on_overrun():
+    import time
+    with pytest.raises(ReasoningError, match="timed out"):
+        rc._with_timeout(lambda: time.sleep(5), 0.1, "slow op")
+
+
+class _FakeResp:
+    def __init__(self, status, body):
+        self.status = status
+        self._body = body
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_is_available_t2_checks_model_pulled(monkeypatch):
+    import urllib.request
+    monkeypatch.delenv("HCGRC_DISABLE_REASONING", raising=False)
+
+    monkeypatch.setattr(urllib.request, "urlopen",
+                        lambda *a, **k: _FakeResp(200, b'{"models":[{"name":"llama3.1:8b"}]}'))
+    assert is_available(Tier.T2) is True
+
+    monkeypatch.setattr(urllib.request, "urlopen",
+                        lambda *a, **k: _FakeResp(200, b'{"models":[{"name":"other:1b"}]}'))
+    assert is_available(Tier.T2) is False  # server up but configured model not pulled
+
+
+def test_is_available_t3_requires_cli_and_creds(monkeypatch):
+    import shutil
+    monkeypatch.delenv("HCGRC_DISABLE_REASONING", raising=False)
+
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    assert is_available(Tier.T3) is False  # no CLI
+
+    monkeypatch.setattr(shutil, "which", lambda _: "/usr/local/bin/claude")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "tok")
+    assert is_available(Tier.T3) is True

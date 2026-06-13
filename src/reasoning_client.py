@@ -69,6 +69,15 @@ class ReasoningError(RuntimeError):
     """Raised when a reasoning call cannot be completed (backend down, timeout, T1 misuse)."""
 
 
+class PermanentReasoningError(ReasoningError):
+    """A non-transient failure (model missing, auth, CLI absent). Never retried."""
+
+
+class RateLimitError(ReasoningError):
+    """A Tier-3 subscription rate window. Retried with long backpressure, never
+    spilled to a metered API (ADR-0016)."""
+
+
 # ── Configuration (env-overridable; local-first defaults) ─────────────────────
 
 
@@ -85,9 +94,21 @@ T3_MODEL = os.environ.get("HCGRC_T3_MODEL", "").strip() or None
 T2_TIMEOUT = float(_env("HCGRC_T2_TIMEOUT", "120"))
 T3_TIMEOUT = float(_env("HCGRC_T3_TIMEOUT", "300"))
 
-# Bounded retry with exponential backoff on transient failures.
-MAX_RETRIES = int(_env("HCGRC_REASONING_RETRIES", "2"))
+# Tier-2 (Ollama) decoding controls. num_ctx avoids silent truncation at the 2048
+# default (#196); seed makes greedy decoding reproducible (#197); num_predict caps
+# output so a runaway/JSON-mode generation hits a bound before the hard timeout (#198).
+T2_NUM_CTX = int(_env("HCGRC_T2_NUM_CTX", "8192"))
+T2_SEED = int(_env("HCGRC_T2_SEED", "0"))
+T2_NUM_PREDICT = int(_env("HCGRC_T2_NUM_PREDICT", "2048"))
+
+# Bounded retry with exponential backoff on transient failures. Clamped >= 0 so a
+# negative override cannot produce an empty loop that raises None (#208).
+MAX_RETRIES = max(0, int(_env("HCGRC_REASONING_RETRIES", "2")))
 BACKOFF_BASE = float(_env("HCGRC_REASONING_BACKOFF", "1.5"))
+# Tier-3 rate-window backpressure: long, capped waits — queue and resume, never
+# fail fast onto a metered path.
+RATE_LIMIT_BACKOFF = float(_env("HCGRC_RATELIMIT_BACKOFF", "30"))
+RATE_LIMIT_MAX_RETRIES = max(0, int(_env("HCGRC_RATELIMIT_RETRIES", "5")))
 
 # Truncation cap for prompt/response text recorded on spans (local Phoenix only).
 _SPAN_TEXT_CAP = 8000
@@ -137,6 +158,10 @@ def _ollama(model: str, temperature: float, json_mode: bool) -> Any:
         "model": model,
         "temperature": temperature,
         "base_url": T2_BASE_URL,
+        "num_ctx": T2_NUM_CTX,         # avoid silent truncation at the 2048 default (#196)
+        "seed": T2_SEED,               # reproducible greedy decoding (#197)
+        "num_predict": T2_NUM_PREDICT,  # bound output length (#198)
+        "client_kwargs": {"timeout": T2_TIMEOUT},  # native HTTP timeout (#195)
     }
     if json_mode:
         # Native structured-output: Ollama constrains decoding to valid JSON,
@@ -159,10 +184,17 @@ def _t2_complete(prompt: str, system: str | None, temperature: float, model: str
         return content if isinstance(content, str) else str(content)
 
     try:
-        return _with_timeout(_call, T2_TIMEOUT, f"Tier 2 (Ollama @ {T2_BASE_URL})").strip()
+        text = _with_timeout(_call, T2_TIMEOUT, f"Tier 2 (Ollama @ {T2_BASE_URL})").strip()
+        return text, {"model": model}
     except ReasoningError:
         raise
-    except Exception as exc:  # connection refused, model missing, etc.
+    except Exception as exc:
+        msg = str(exc).lower()
+        # A missing model is permanent — retrying just wastes backoff (#194).
+        if "not found" in msg or "no such model" in msg or "try pulling" in msg:
+            raise PermanentReasoningError(
+                f"Tier 2 model {model!r} not available on Ollama: {exc}"
+            ) from exc
         raise ReasoningError(f"Tier 2 (Ollama @ {T2_BASE_URL}) call failed: {exc}") from exc
 
 
@@ -181,16 +213,18 @@ def _scrubbed_env() -> dict[str, str]:
     return {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
 
 
-async def _t3_async(prompt: str, system: str | None, max_turns: int, model: str | None) -> str:
+async def _t3_async(prompt: str, system: str | None, max_turns: int,
+                    model: str | None) -> tuple[str, dict[str, Any]]:
     try:
         from claude_agent_sdk import (
             AssistantMessage,
             ClaudeAgentOptions,
+            ResultMessage,
             TextBlock,
             query,
         )
     except ImportError as exc:  # pragma: no cover - dependency guard
-        raise ReasoningError(
+        raise PermanentReasoningError(
             "claude-agent-sdk is not installed — Tier 3 backend unavailable."
         ) from exc
 
@@ -204,26 +238,45 @@ async def _t3_async(prompt: str, system: str | None, max_turns: int, model: str 
         opts.model = model
 
     chunks: list[str] = []
+    meta: dict[str, Any] = {"model": model}  # real model id if pinned, else unknown
 
     async def _drain():
         async for msg in query(prompt=prompt, options=opts):
             if isinstance(msg, AssistantMessage):
+                if getattr(msg, "model", None):
+                    meta["model"] = msg.model  # the actual model the run used (#204)
                 for block in msg.content:
                     if isinstance(block, TextBlock):
                         chunks.append(block.text)
+            elif isinstance(msg, ResultMessage):
+                if getattr(msg, "usage", None):
+                    meta["usage"] = msg.usage  # token usage for the span (#203)
+                if getattr(msg, "total_cost_usd", None) is not None:
+                    meta["cost_usd"] = msg.total_cost_usd
 
     await asyncio.wait_for(_drain(), timeout=T3_TIMEOUT)
-    return "".join(chunks).strip()
+    return "".join(chunks).strip(), meta
 
 
-def _t3_complete(prompt: str, system: str | None, max_turns: int, model: str | None) -> str:
+def _t3_complete(prompt: str, system: str | None, max_turns: int,
+                 model: str | None) -> tuple[str, dict[str, Any]]:
     try:
         return _run_sync(_t3_async(prompt, system, max_turns, model))
     except ReasoningError:
         raise
     except (asyncio.TimeoutError, FuturesTimeout) as exc:
         raise ReasoningError(f"Tier 3 (Agent SDK) timed out after {T3_TIMEOUT:.0f}s") from exc
-    except Exception as exc:  # CLI not found, auth, rate window, etc.
+    except Exception as exc:
+        msg = str(exc).lower()
+        # Subscription rate window — queue and resume with long backpressure,
+        # never spill to a metered API (ADR-0016, #185).
+        if any(k in msg for k in ("rate limit", "rate_limit", "429", "overloaded",
+                                  "usage limit", "too many requests")):
+            raise RateLimitError(f"Tier 3 rate window: {exc}") from exc
+        # CLI absent / auth failure — permanent, not worth retrying (#194).
+        if any(k in msg for k in ("not found", "command not found", "no such file",
+                                  "auth", "credential", "401", "403", "unauthor")):
+            raise PermanentReasoningError(f"Tier 3 (Agent SDK) unavailable: {exc}") from exc
         raise ReasoningError(f"Tier 3 (Agent SDK) call failed: {exc}") from exc
 
 
@@ -231,10 +284,28 @@ def _t3_complete(prompt: str, system: str | None, max_turns: int, model: str | N
 
 
 def _attempt(tier: Tier, prompt: str, system: str | None, temperature: float,
-             max_turns: int, model: str | None, json_mode: bool) -> str:
+             max_turns: int, model: str | None, json_mode: bool) -> tuple[str, dict[str, Any]]:
     if tier is Tier.T2:
         return _t2_complete(prompt, system, temperature, model or T2_MODEL, json_mode)
     return _t3_complete(prompt, system, max_turns, model or T3_MODEL)
+
+
+def _record_usage(span, usage: Any) -> None:
+    """Set OpenInference token-count attributes from a usage dict/object (#203)."""
+    if not usage:
+        return
+
+    def g(key: str):
+        return usage.get(key) if isinstance(usage, dict) else getattr(usage, key, None)
+
+    prompt_toks = g("input_tokens")
+    completion_toks = g("output_tokens")
+    if prompt_toks is not None:
+        span.set_attribute("llm.token_count.prompt", prompt_toks)
+    if completion_toks is not None:
+        span.set_attribute("llm.token_count.completion", completion_toks)
+    if prompt_toks is not None and completion_toks is not None:
+        span.set_attribute("llm.token_count.total", prompt_toks + completion_toks)
 
 
 def complete(
@@ -266,12 +337,15 @@ def complete(
     if os.environ.get("HCGRC_DISABLE_REASONING", "").strip():
         raise ReasoningError("reasoning disabled via HCGRC_DISABLE_REASONING")
 
-    eff_model = model or (T2_MODEL if tier is Tier.T2 else (T3_MODEL or "claude-max-default"))
+    # Known model id only — never fabricate one (#204). For a T3 run on the
+    # subscription default, the real model is read back from the response.
+    known_model = model or (T2_MODEL if tier is Tier.T2 else T3_MODEL)
     with _tracer.start_as_current_span("reasoning.complete") as span:
         # OpenInference LLM conventions + HC-GRC cross-store correlation.
         span.set_attribute("openinference.span.kind", "LLM")
         span.set_attribute("llm.provider", "ollama" if tier is Tier.T2 else "anthropic")
-        span.set_attribute("llm.model_name", eff_model)
+        if known_model:
+            span.set_attribute("llm.model_name", known_model)
         span.set_attribute("hcgrc.tier", tier.value)
         if run_id:
             span.set_attribute("hcgrc.run_id", run_id)
@@ -281,17 +355,39 @@ def complete(
         span.set_attribute("input.value", prompt[:_SPAN_TEXT_CAP])
 
         last_exc: ReasoningError | None = None
-        for attempt_no in range(MAX_RETRIES + 1):
+        attempt_no = 0
+        # Two retry budgets: ordinary transient failures vs. T3 rate windows,
+        # which get more, longer-spaced attempts (queue-and-resume, ADR-0016 #185).
+        while True:
             try:
-                out = _attempt(tier, prompt, system, temperature, max_turns, model, _json_mode)
+                out, meta = _attempt(tier, prompt, system, temperature, max_turns, model, _json_mode)
+                if meta.get("model"):
+                    span.set_attribute("llm.model_name", meta["model"])
+                _record_usage(span, meta.get("usage"))
+                if meta.get("cost_usd") is not None:
+                    span.set_attribute("llm.cost_usd", meta["cost_usd"])
                 span.set_attribute("output.value", out[:_SPAN_TEXT_CAP])
                 span.set_attribute("llm.retries", attempt_no)
                 return out
+            except PermanentReasoningError as exc:
+                # Deterministic failure — do not retry (#194).
+                last_exc = exc
+                break
+            except RateLimitError as exc:
+                last_exc = exc
+                if attempt_no >= RATE_LIMIT_MAX_RETRIES:
+                    break
+                span.add_event("rate_limit_backpressure",
+                               {"attempt": attempt_no, "sleep_s": RATE_LIMIT_BACKOFF})
+                time.sleep(RATE_LIMIT_BACKOFF * (attempt_no + 1))
+                attempt_no += 1
             except ReasoningError as exc:
                 last_exc = exc
-                if attempt_no < MAX_RETRIES:
-                    span.add_event("retry", {"attempt": attempt_no, "error": str(exc)[:300]})
-                    time.sleep(BACKOFF_BASE ** attempt_no)
+                if attempt_no >= MAX_RETRIES:
+                    break
+                span.add_event("retry", {"attempt": attempt_no, "error": str(exc)[:300]})
+                time.sleep(BACKOFF_BASE ** attempt_no)
+                attempt_no += 1
         # Exhausted retries.
         span.record_exception(last_exc)
         span.set_status(trace.StatusCode.ERROR, str(last_exc))
@@ -405,13 +501,19 @@ def is_available(tier: Tier) -> bool:
     if os.environ.get("HCGRC_DISABLE_REASONING", "").strip():
         return False
     if tier is Tier.T2:
-        # Hit Ollama's /api/tags — no generation, short timeout.
+        # Hit Ollama's /api/tags — no generation, short timeout — and confirm the
+        # configured model is actually pulled, not merely that the server is up (#210).
+        import json as _json
         import urllib.request
         try:
             with urllib.request.urlopen(f"{T2_BASE_URL}/api/tags", timeout=3) as r:
-                return r.status == 200
+                if r.status != 200:
+                    return False
+                names = [m.get("name", "") for m in _json.loads(r.read()).get("models", [])]
         except Exception:
             return False
+        base = T2_MODEL.split(":")[0]
+        return any(n == T2_MODEL or n.split(":")[0] == base for n in names)
     if tier is Tier.T3:
         # The `claude` CLI must be present and an OAuth token / stored creds
         # available — no frontier turn spent.
