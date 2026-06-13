@@ -135,7 +135,10 @@ def t00_orchestrator_node(state: HCGRCState) -> dict[str, Any]:
 
     grounding: str | None = None
     try:
-        grounding = complete(_ORCHESTRATOR_TIER, prompt, system=_ORCHESTRATOR_SYSTEM)
+        grounding = complete(
+            _ORCHESTRATOR_TIER, prompt, system=_ORCHESTRATOR_SYSTEM,
+            run_id=run_id, agent_id="orchestrator",
+        )
         note = f"T-00 run-start grounding produced via reasoning_client ({_ORCHESTRATOR_TIER.value})"
     except ReasoningError as exc:
         # Backend unavailable — record the degradation and proceed.
