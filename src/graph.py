@@ -21,9 +21,9 @@ Graph topology (Phase 0 + Phase 1):
       ↓ [rejected]
   exploratory_phase   ← loop back to re-run EDA with revised hypotheses
 
-  gate_3, gate_4, gate_5 are Phase 2 mechanism work — nodes registered here
-  so routing functions can reference them, but edges from confirmatory subgraph
-  are deferred.
+  gate_3, gate_4, gate_5 are Phase 2 mechanism work — their node functions live
+  in nodes/gates.py but are NOT registered in this Phase 0/1 graph (they would be
+  unreachable). They are wired into the confirmatory subgraph in Phase 2.
 
 Gate nodes use interrupt() to surface proposals to the operator.
 All gate decisions are written by gate_coordinator (serialized, no concurrent writes).
@@ -37,9 +37,15 @@ from __future__ import annotations
 from typing import Any
 
 from langgraph.graph import END, StateGraph
+from langgraph.types import Command
 
+from .checkpointer import configured_checkpointer
+from .infrastructure.observability.phoenix_setup import (
+    bootstrap_observability,
+    run_trace_context,
+)
 from .nodes.data_split import data_split_node
-from .nodes.gates import gate_1_node, gate_2_node, gate_3_node, gate_4_node, gate_5_node
+from .nodes.gates import gate_1_node, gate_2_node
 from .nodes.orchestrator import route_after_gate_1, route_after_gate_2, t00_orchestrator_node
 from .nodes.phase1 import (
     confirmatory_entry_node,
@@ -48,6 +54,18 @@ from .nodes.phase1 import (
     hypothesis_formalize_node,
 )
 from .state import HCGRCState, initial_state
+
+# Upper bound on graph super-steps per run. Bounds the Gate-2-rejected loop back
+# to exploratory analysis so a non-converging run fails loudly (#179).
+GRAPH_RECURSION_LIMIT = 50
+
+# Resilience is layered, NOT via node RetryPolicy (pass-4 #15): the reasoning_client
+# retries transient LLM failures with backoff; the agent nodes isolate per-agent
+# failures as a 'failed' status + failure_event (so one agent's error neither
+# crashes the run nor is retried into a re-executed SAP violation); the checkpointer
+# uses a self-healing pool; and GRAPH_RECURSION_LIMIT bounds loops. A node-level
+# RetryPolicy was dead — the nodes catch their own exceptions before LangGraph
+# would ever retry — and is therefore not used.
 
 # ── Graph builder ─────────────────────────────────────────────────────────────
 
@@ -84,11 +102,11 @@ def build_graph(checkpointer=None) -> StateGraph:
     builder.add_node("hypothesis_formalize", hypothesis_formalize_node)
     builder.add_node("gate_2", gate_2_node)
 
-    # ── Phase 2 stubs (nodes registered; edges from confirmatory subgraph deferred) ──
+    # ── Phase 2 stub ────────────────────────────────────────────────────────────
+    # gate_3/4/5 are NOT registered here: they have no inbound edges in Phase 0/1
+    # and would be dead/unreachable nodes (#213). They are wired into the
+    # confirmatory subgraph in Phase 2. Their node functions live in nodes/gates.py.
     builder.add_node("confirmatory_entry", confirmatory_entry_node)
-    builder.add_node("gate_3", gate_3_node)
-    builder.add_node("gate_4", gate_4_node)
-    builder.add_node("gate_5", gate_5_node)
 
     # ── Edges — Phase 0 ───────────────────────────────────────────────────────
     builder.set_entry_point("orchestrator")
@@ -119,16 +137,10 @@ def build_graph(checkpointer=None) -> StateGraph:
         },
     )
 
-    # ── Phase 2 stub edges ────────────────────────────────────────────────────
+    # ── Phase 2 stub edge ──────────────────────────────────────────────────────
     # confirmatory_entry → gate_3 → gate_4 → gate_5 will be wired in Phase 2.
     # For now, confirmatory_entry routes to END so the graph compiles.
     builder.add_edge("confirmatory_entry", END)
-
-    # gate_3, gate_4, gate_5 are reachable (registered) but not yet wired
-    # into the confirmatory subgraph. They connect to END to keep graph valid.
-    builder.add_edge("gate_3", END)
-    builder.add_edge("gate_4", END)
-    builder.add_edge("gate_5", END)
 
     # ── Compile ───────────────────────────────────────────────────────────────
     compile_kwargs: dict[str, Any] = {}
@@ -150,11 +162,57 @@ def run_phase0_synthetic(run_id: str | None = None, checkpointer=None) -> dict[s
     For tests that need to skip the interrupt, use the graph's
     .invoke() with a pre-configured Command resume.
     """
+    # interrupt() is a no-op without a checkpointer — the gate could not pause for
+    # the operator. Default to the configured backend so the runner actually parks
+    # at the gate (#200/#226).
+    checkpointer = checkpointer or configured_checkpointer()
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
-    thread_config = {"configurable": {"thread_id": state["run_id"]}}
-    result = graph.invoke(state, config=thread_config)
+    bootstrap_observability()
+    # Explicit recursion_limit bounds the Gate-2-rejected → exploratory loop so a
+    # run that never converges terminates with GraphRecursionError instead of
+    # looping unbounded (#179).
+    thread_config = {
+        "configurable": {"thread_id": state["run_id"]},
+        "recursion_limit": GRAPH_RECURSION_LIMIT,
+    }
+    with run_trace_context(state["run_id"]):
+        result = graph.invoke(state, config=thread_config)
     return result
+
+
+def resume_run(run_id: str, decision: str, rationale: str, checkpointer,
+               *, gate_id: str | None = None, checkpoint_id: str | None = None) -> dict[str, Any]:
+    """
+    Resume a run parked at a gate interrupt with the operator's decision.
+
+    The runners invoke the graph once and return when a gate's interrupt() parks
+    it; this is the other half of the loop (#162). The operator's decision is
+    delivered via the ADR-0014 governance channel and injected here as the
+    interrupt's resume value, so the gate node observes
+    {'gate_id': ..., 'decision': ..., 'rationale': ...} and continues.
+
+    Pass gate_id (the gate the operator was deciding on) so the gate-correlation
+    guard in _run_gate can reject a stale/misrouted decision targeted at a gate
+    other than the one currently parked (pass-4 #3). Without it the guard is
+    unreachable. The ADR-0014 channel should record and pass back the gate_id it
+    surfaced.
+
+    Requires the SAME checkpointer the run was started with (thread_id == run_id).
+    """
+    graph = build_graph(checkpointer=checkpointer)
+    bootstrap_observability()
+    config: dict[str, Any] = {
+        "configurable": {"thread_id": run_id},
+        "recursion_limit": GRAPH_RECURSION_LIMIT,
+    }
+    if checkpoint_id:
+        config["configurable"]["checkpoint_id"] = checkpoint_id
+    resume_value: dict[str, Any] = {"decision": decision, "rationale": rationale}
+    if gate_id is not None:
+        resume_value["gate_id"] = gate_id
+    with run_trace_context(run_id):
+        return graph.invoke(Command(resume=resume_value), config=config)
 
 
 def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str, Any]:
@@ -165,8 +223,17 @@ def run_phase1_dry_run(run_id: str | None = None, checkpointer=None) -> dict[str
     nodes will record stub_pending statuses (NotImplementedError caught). This
     verifies the Phase 1 graph topology before real SCF data is loaded.
     """
+    checkpointer = checkpointer or configured_checkpointer()
     graph = build_graph(checkpointer=checkpointer)
     state = initial_state(run_id=run_id)
-    thread_config = {"configurable": {"thread_id": state["run_id"]}}
-    result = graph.invoke(state, config=thread_config)
+    bootstrap_observability()
+    # Explicit recursion_limit bounds the Gate-2-rejected → exploratory loop so a
+    # run that never converges terminates with GraphRecursionError instead of
+    # looping unbounded (#179).
+    thread_config = {
+        "configurable": {"thread_id": state["run_id"]},
+        "recursion_limit": GRAPH_RECURSION_LIMIT,
+    }
+    with run_trace_context(state["run_id"]):
+        result = graph.invoke(state, config=thread_config)
     return result

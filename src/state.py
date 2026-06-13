@@ -23,6 +23,27 @@ GateID = Literal["gate_1", "gate_2", "gate_3", "gate_4", "gate_5"]
 GateDecision = Literal["pending", "approved", "rejected", "deferred"]
 
 
+# ── Reducers ──────────────────────────────────────────────────────────────────
+
+
+def _merge_hypotheses(a: list[dict[str, Any]], b: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Append b onto a, deduping by hypothesis 'id' (latest wins, position kept).
+
+    Entries without an 'id' are kept as-is. Prevents a Gate-2 reject → re-formalize
+    loop from accumulating duplicate hypotheses into the pre-registered set."""
+    merged = list(a)
+    index = {h["id"]: i for i, h in enumerate(merged) if isinstance(h, dict) and h.get("id")}
+    for h in b:
+        hid = h.get("id") if isinstance(h, dict) else None
+        if hid is not None and hid in index:
+            merged[index[hid]] = h
+        else:
+            if hid is not None:
+                index[hid] = len(merged)
+            merged.append(h)
+    return merged
+
+
 # ── Core state ───────────────────────────────────────────────────────────────
 
 
@@ -69,7 +90,10 @@ class HCGRCState(TypedDict):
     findings: Annotated[list[dict[str, Any]], lambda a, b: a + b]
 
     # ── Data split record ─────────────────────────────────────────────────────
-    # Set by DataSplitAgent; immutable after Gate 1.
+    # Un-reduced (last-write-wins) scalars. Written by exactly one node per phase —
+    # data_split_node in Phase 0, DataStewardAgent in Phase 1 — never concurrently,
+    # so last-write-wins is safe by sequencing, not by a reducer (#212). Immutable
+    # after Gate 1. If these ever become concurrently written, add a reducer.
     data_split_manifest_hash: str | None  # SHA-256 of the raw manifest file
     data_split_seed: int | None  # derived from manifest hash (int.from_bytes)
     data_split_verified: bool  # True after idempotency assertion passes
@@ -86,18 +110,29 @@ class HCGRCState(TypedDict):
     # Keys: model_name, model_hash, corpus_dvc_hash, timestamp_utc
     embedding_manifest: dict[str, Any] | None
 
-    # ── Exploratory analysis artifacts (append-only) ──────────────────────────
+    # ── Exploratory analysis artifacts (append, deduped) ──────────────────────
     # eda_artifacts: file paths to all EXP_* outputs from P1-P5 nodes.
     # Each node appends its artifact paths. Gate 3 verifies all 5 agents present.
+    # Deduped on merge so a Gate-2 reject → re-run-exploratory loop cannot
+    # accumulate the same artifact path repeatedly (#235).
     # eda_agent_statuses: per-agent completion records.
     # Keys: agent_id, status ("completed"|"stub_pending"|"failed"), note, timestamp_utc
-    eda_artifacts: Annotated[list[str], lambda a, b: a + b]
+    eda_artifacts: Annotated[list[str], lambda a, b: a + [x for x in b if x not in a]]
     eda_agent_statuses: Annotated[list[dict[str, Any]], lambda a, b: a + b]
 
-    # ── Formalized hypothesis set (append-only) ───────────────────────────────
+    # ── Formalized hypothesis set (append, deduped by id) ─────────────────────
     # Written by HypothesisFormalizerAgent before Gate 2.
     # Each entry is a FormalHypothesis dict (see src/agents/hypothesis_formalizer).
-    hypothesis_set: Annotated[list[dict[str, Any]], lambda a, b: a + b]
+    # Deduped by hypothesis id (latest wins) so a Gate-2 reject → re-formalize loop
+    # cannot accumulate duplicate hypotheses into the set Gate 2 locks (pass-4 #2).
+    hypothesis_set: Annotated[list[dict[str, Any]], lambda a, b: _merge_hypotheses(a, b)]
+
+    # ── Orchestrator run-start grounding ──────────────────────────────────────
+    # Produced by t00_orchestrator_node via the reasoning_client (Tier 2). The
+    # orchestrator reasons about the run *inside the graph* rather than the work
+    # being done by hand outside the framework (ADR-0016 — the agency contract).
+    # None when the reasoning backend was unavailable (graceful degradation).
+    run_grounding: str | None
 
     # ── Escalation ────────────────────────────────────────────────────────────
     escalation_issue_number: int | None  # GitHub issue number if parked
@@ -130,6 +165,7 @@ def initial_state(run_id: str | None = None) -> HCGRCState:
         eda_artifacts=[],
         eda_agent_statuses=[],
         hypothesis_set=[],
+        run_grounding=None,
         escalation_issue_number=None,
         escalation_reason=None,
         messages=[],

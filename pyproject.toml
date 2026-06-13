@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "hc-grc"
@@ -21,11 +21,13 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+# Floors aligned with the pinned dev tools in requirements.txt so the two don't
+# diverge (#244).
 dev = [
-  "pytest>=7.4",
-  "pytest-cov>=4.1",
-  "ruff>=0.1",
-  "black>=23.0",
+  "pytest>=8.2.2",
+  "pytest-cov>=5.0.0",
+  "ruff>=0.4.8",
+  "black>=24.4.2",
   "pre-commit>=3.5",
 ]
 
@@ -43,3 +45,9 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=term-missing"
+# Promote LangGraph deprecations to errors so a deprecated API (e.g. add_node
+# retry= vs retry_policy=) fails the suite instead of silently shipping until the
+# next major breaks it (#206).
+filterwarnings = [
+    "error::langgraph.warnings.LangGraphDeprecationWarning",
+]

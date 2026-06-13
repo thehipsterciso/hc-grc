@@ -4,7 +4,7 @@ HC-GRC agent base types and contracts.
 All Phase 1 research agents inherit from BaseResearchAgent or implement the
 same __call__ signature. The contract is:
 
-    agent(state: HCGRCState, **kwargs) -> dict[str, Any]
+    agent(state: HCGRCState) -> dict[str, Any]
 
 The return dict is a LangGraph partial state update — merged into HCGRCState
 by the graph runtime. Agents must never mutate state in place.
@@ -131,17 +131,30 @@ class BaseResearchAgent(ABC):
 
     PROTECTED: bool = False  # override in P1–P5, statistical-analyst, hypothesis-formalizer
     AGENT_ID: str = ""       # kebab-case, matches AGENT.md name field
+    # Set True once the agent's run_* methods are real. While False, a
+    # NotImplementedError is an expected Phase-0/1 stub; once True, a
+    # NotImplementedError is a genuine bug the orchestrator must not silently
+    # swallow as 'stub_pending' (#202).
+    IMPLEMENTED: bool = False
 
     def __call__(self, state: HCGRCState) -> dict[str, Any]:
         """
         LangGraph-compatible call: returns a partial state update dict.
 
         Dispatches to run_exploratory() or run_confirmatory() based on phase.
+
+        The canonical phase values written by the graph are phase_0 / phase_1 /
+        phase_2 (see state.Phase). Exploratory analysis runs in phase_0/phase_1;
+        confirmatory analysis runs in phase_2, where the Gate 2 SAP firewall
+        (assert_gate2_approved) must hold before any test-split access. The legacy
+        string aliases "exploratory"/"confirmatory" are accepted defensively.
+        (Hardening pass 1, #17: phase_2 previously hit the else-branch and raised,
+        so run_confirmatory and the SAP firewall were unreachable.)
         """
         phase = state.get("phase", "phase_0")
-        if phase in ("exploratory", "phase_0", "phase_1"):
+        if phase in ("phase_0", "phase_1", "exploratory"):
             return self.run_exploratory(state)
-        elif phase == "confirmatory":
+        elif phase in ("phase_2", "confirmatory"):
             assert_gate2_approved(state)
             return self.run_confirmatory(state)
         else:
@@ -192,6 +205,7 @@ class BasePipelineAgent(ABC):
 
     AGENT_ID: str = ""     # kebab-case, matches AGENT.md name field
     PROTECTED: bool = False  # never True for pipeline agents
+    IMPLEMENTED: bool = False  # see BaseResearchAgent.IMPLEMENTED (#202)
 
     @abstractmethod
     def run(self, state: HCGRCState) -> dict[str, Any]:

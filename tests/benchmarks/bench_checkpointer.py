@@ -16,12 +16,14 @@ Prerequisites (PostgresSaver path):
     - PostgreSQL running on localhost:5432/hcgrc
     - HCGRC_POSTGRES_URL env var (optional, defaults to localhost)
 
-If Postgres is not available, the benchmark falls back to MemorySaver and logs a
-warning. MemorySaver results are not representative of production throughput.
+If Postgres is not available, the PostgresSaver benchmark is skipped (pytest) or
+reports "unavailable" (standalone runner); the MemorySaver baseline always runs.
+MemorySaver results are not representative of production throughput.
 """
 
 from __future__ import annotations
 
+import math
 import time
 import uuid
 import warnings
@@ -32,6 +34,15 @@ import pytest
 from src.checkpointer import get_checkpointer
 from src.graph import build_graph
 from src.state import initial_state
+
+
+def _percentile(sorted_vals: list[float], pct: float) -> float:
+    """Nearest-rank percentile. Fixes the off-by-one that made p95 == max (#211)."""
+    if not sorted_vals:
+        return 0.0
+    rank = max(1, math.ceil(pct / 100.0 * len(sorted_vals)))
+    return sorted_vals[min(rank, len(sorted_vals)) - 1]
+
 
 # ── Benchmark parameters ──────────────────────────────────────────────────────
 
@@ -52,6 +63,13 @@ def run_benchmark(use_memory: bool = False) -> dict[str, Any]:
 
     Timing is wall-clock around each step.
     """
+    # Measure checkpoint write/read, NOT LLM inference: the orchestrator node would
+    # otherwise call the reasoning_client and fold model latency into the timing
+    # (#234). Disable reasoning + tracing for the duration of the benchmark.
+    import os
+    os.environ["HCGRC_DISABLE_REASONING"] = "1"
+    os.environ["HCGRC_DISABLE_TRACING"] = "1"
+
     checkpointer = get_checkpointer(use_memory=use_memory)
     backend = "MemorySaver" if use_memory else "PostgresSaver"
     graph = build_graph(checkpointer=checkpointer)
@@ -83,11 +101,11 @@ def run_benchmark(use_memory: bool = False) -> dict[str, Any]:
     return {
         "backend": backend,
         "n_runs": N_RUNS,
-        "write_p50_ms": write_sorted[N_RUNS // 2],
-        "write_p95_ms": write_sorted[int(N_RUNS * 0.95)],
+        "write_p50_ms": _percentile(write_sorted, 50),
+        "write_p95_ms": _percentile(write_sorted, 95),
         "write_max_ms": max(write_times_ms),
-        "read_p50_ms": read_sorted[N_RUNS // 2],
-        "read_p95_ms": read_sorted[int(N_RUNS * 0.95)],
+        "read_p50_ms": _percentile(read_sorted, 50),
+        "read_p95_ms": _percentile(read_sorted, 95),
         "read_max_ms": max(read_times_ms),
         "write_threshold_ms": WRITE_THRESHOLD_MS,
         "read_threshold_ms": READ_THRESHOLD_MS,

@@ -87,6 +87,32 @@ def _stub_status(agent_id: str, run_id: str) -> dict[str, Any]:
     }
 
 
+def _failed_status(agent_id: str, run_id: str, exc: BaseException) -> dict[str, Any]:
+    """Status record written when an agent raises a real runtime error (not a stub).
+
+    Produces the 'failed' status the state schema documents, so one agent's bug is
+    recorded and isolated instead of crashing the whole subgraph (#148)."""
+    return {
+        "agent_id": agent_id,
+        "status": "failed",
+        "error": repr(exc),
+        "note": f"{agent_id} raised {type(exc).__name__} during execution",
+        "timestamp_utc": _utc_now(),
+        "run_id": run_id,
+    }
+
+
+def _failure_event(agent_id: str, run_id: str, exc: BaseException) -> dict[str, Any]:
+    """Failure event for Agent-Evolution / operator monitoring (append reducer)."""
+    return {
+        "event_type": "agent_runtime_error",
+        "agent_id": agent_id,
+        "error": repr(exc),
+        "run_id": run_id,
+        "timestamp_utc": _utc_now(),
+    }
+
+
 def _prov(activity: str, run_id: str, **kwargs: Any) -> dict[str, Any]:
     """Minimal PROV-DM compatible activity record."""
     return {
@@ -113,6 +139,7 @@ def data_pipeline_node(state: HCGRCState) -> dict[str, Any]:
     """
     run_id = state["run_id"]
     pipeline_statuses: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
     prov: list[dict[str, Any]] = []
 
     stages = [
@@ -139,7 +166,16 @@ def data_pipeline_node(state: HCGRCState) -> dict[str, Any]:
                     prov.extend(v)
                 else:
                     accumulated_update[k] = v
-        except NotImplementedError:
+        except NotImplementedError as exc:
+            # Only an unimplemented agent legitimately raises NotImplementedError.
+            # Once IMPLEMENTED, a NotImplementedError is a real bug, not a stub (#202).
+            if getattr(agent, "IMPLEMENTED", False):
+                pipeline_statuses.append(_failed_status(agent_id, run_id, exc))
+                failures.append(_failure_event(agent_id, run_id, exc))
+                prov.append(_prov(
+                    f"data_pipeline_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
+                ))
+                break
             pipeline_statuses.append(_stub_status(agent_id, run_id))
             # Cannot continue pipeline if a stage is not implemented
             # Phase 1 is not ready until all four stages complete
@@ -149,14 +185,29 @@ def data_pipeline_node(state: HCGRCState) -> dict[str, Any]:
                 note="NotImplementedError — Phase 1 implementation pending",
             ))
             break
+        except Exception as exc:
+            # A real runtime error in one stage is recorded as 'failed' and halts
+            # the pipeline (later stages depend on earlier ones) without crashing
+            # the graph or discarding prior stages' output (#148). A governance
+            # violation must propagate — it is not a recoverable pipeline fault.
+            from ..agents.base import SAPViolationError
+            pipeline_statuses.append(_failed_status(agent_id, run_id, exc))
+            failures.append(_failure_event(agent_id, run_id, exc))
+            prov.append(_prov(
+                f"data_pipeline_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
+            ))
+            if isinstance(exc, SAPViolationError):
+                raise
+            break
 
-    # phase_1_ready only if all four stages completed (no stubs in statuses)
+    # phase_1_ready only if all four stages completed (no stubs/failures in statuses)
     all_complete = all(s["status"] == "completed" for s in pipeline_statuses)
 
     return {
         **accumulated_update,
         "phase_1_ready": all_complete,
         "eda_agent_statuses": pipeline_statuses,
+        "failure_events": failures,
         "prov_activities": prov + [_prov("data_pipeline_node", run_id,
                                          all_complete=all_complete)],
     }
@@ -183,6 +234,7 @@ def exploratory_phase_node(state: HCGRCState) -> dict[str, Any]:
     run_id = state["run_id"]
     agent_statuses: list[dict[str, Any]] = []
     all_eda_artifacts: list[str] = []
+    failures: list[dict[str, Any]] = []
     prov: list[dict[str, Any]] = []
 
     research_agents = [
@@ -208,12 +260,33 @@ def exploratory_phase_node(state: HCGRCState) -> dict[str, Any]:
             })
             prov.append(_prov(f"exploratory_{agent_id.replace('-', '_')}", run_id,
                                artifact_count=len(artifacts)))
-        except NotImplementedError:
+        except NotImplementedError as exc:
+            if getattr(agent, "IMPLEMENTED", False):
+                # Real bug from an implemented agent — record as failed, not stub (#202).
+                agent_statuses.append(_failed_status(agent_id, run_id, exc))
+                failures.append(_failure_event(agent_id, run_id, exc))
+                prov.append(_prov(
+                    f"exploratory_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
+                ))
+                continue
             agent_statuses.append(_stub_status(agent_id, run_id))
             prov.append(_prov(
                 f"exploratory_{agent_id.replace('-', '_')}_stub",
                 run_id,
                 note="NotImplementedError — Phase 1 implementation pending",
+            ))
+        except Exception as exc:
+            # P1-P5 are independent — one agent's runtime error is recorded as
+            # 'failed' and the loop continues so the other agents' artifacts are
+            # preserved, instead of crashing the whole exploratory subgraph (#148).
+            # A governance violation must propagate, not be swallowed.
+            from ..agents.base import SAPViolationError
+            if isinstance(exc, SAPViolationError):
+                raise
+            agent_statuses.append(_failed_status(agent_id, run_id, exc))
+            failures.append(_failure_event(agent_id, run_id, exc))
+            prov.append(_prov(
+                f"exploratory_{agent_id.replace('-', '_')}_failed", run_id, error=repr(exc),
             ))
 
     all_stubs = all(s["status"] == "stub_pending" for s in agent_statuses)
@@ -226,6 +299,7 @@ def exploratory_phase_node(state: HCGRCState) -> dict[str, Any]:
         "phase": "phase_1",
         "eda_artifacts": all_eda_artifacts,
         "eda_agent_statuses": agent_statuses,
+        "failure_events": failures,
         "exploratory_complete": exploratory_complete,
         "prov_activities": prov + [_prov("exploratory_phase_node", run_id,
                                           exploratory_complete=exploratory_complete)],
@@ -246,6 +320,7 @@ def hypothesis_formalize_node(state: HCGRCState) -> dict[str, Any]:
     from EDA outputs and HARKing validation stub. Output is the Gate 2 input.
     """
     run_id = state["run_id"]
+    agent_id = "hypothesis-formalizer"
 
     try:
         agent_update = _hypothesis_formalizer(state)
@@ -255,11 +330,32 @@ def hypothesis_formalize_node(state: HCGRCState) -> dict[str, Any]:
             "prov_activities": [_prov("hypothesis_formalization", run_id,
                                        hypothesis_count=hypothesis_count)],
         }
-    except NotImplementedError:
+    except NotImplementedError as exc:
+        # Only an unimplemented agent legitimately raises NotImplementedError;
+        # once IMPLEMENTED it is a real bug, not a stub (#237).
+        if getattr(_hypothesis_formalizer, "IMPLEMENTED", False):
+            return {
+                "eda_agent_statuses": [_failed_status(agent_id, run_id, exc)],
+                "failure_events": [_failure_event(agent_id, run_id, exc)],
+                "prov_activities": [_prov("hypothesis_formalization_failed", run_id,
+                                          error=repr(exc))],
+            }
         return {
-            "eda_agent_statuses": [_stub_status("hypothesis-formalizer", run_id)],
+            "eda_agent_statuses": [_stub_status(agent_id, run_id)],
             "prov_activities": [_prov("hypothesis_formalization_stub", run_id,
                                        note="NotImplementedError — Phase 1 pending")],
+        }
+    except Exception as exc:
+        # Isolate a real runtime error: record it instead of crashing the graph,
+        # and emit a failure_event for the monitor (#35). SAP violations propagate.
+        from ..agents.base import SAPViolationError
+        if isinstance(exc, SAPViolationError):
+            raise
+        return {
+            "eda_agent_statuses": [_failed_status(agent_id, run_id, exc)],
+            "failure_events": [_failure_event(agent_id, run_id, exc)],
+            "prov_activities": [_prov("hypothesis_formalization_failed", run_id,
+                                      error=repr(exc))],
         }
 
 
